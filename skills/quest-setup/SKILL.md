@@ -64,6 +64,8 @@ route unauthenticated. A plain-text `Cannot GET <path>` or `Cannot POST
 ## Reference material
 
 - [`references/auth-and-environment.md`](references/auth-and-environment.md): host, credential, routes, access check and scope
+- [`references/quest-document.md`](references/quest-document.md): the quest graph, conditional requirements, full-document PUT
+- [`references/node-subtypes.md`](references/node-subtypes.md): the seven accepted node subtypes and their parameters
 
 ## Flow
 
