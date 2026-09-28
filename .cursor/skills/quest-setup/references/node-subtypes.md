@@ -231,9 +231,11 @@ will run. Do not recommend it as a working scheduler or invent schedule fields.
 For a scheduling request, explain this limitation before configuring a quest.
 `scheduled_event` is not an alternative today; see above. The alternative is a
 `dynamic_event` trigger and a scheduler the developer runs that submits the
-event at the right time. On stage that is blocked too for now: the Basic
-credential has no event route (see `events.md`), and an event sent with
-another credential lands in another account and never matches the quest.
+event at the right time. On stage, submit the dynamic event through the
+collector's fixed `POST /api/v2/events` BasicAuth lane after the route and
+credential pass the live preflight (see `events.md`). An event sent with
+another credential can land in another account and never match the quest, so
+the skill must not switch lanes automatically.
 
 Source: local `adtech/qp-worker-generic-quest/internal/temporal/generic_quest/activity/trigger.go`,
 checked on 2026-09-22. Revalidate the deployed worker before claiming runtime behavior.

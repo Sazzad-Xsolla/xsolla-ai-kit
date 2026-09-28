@@ -91,13 +91,19 @@ route unauthenticated. A plain-text `Cannot GET <path>` or `Cannot POST
    replaces everything omitted from the body. Show a before/after diff and
    read the quest back after the approved write. Pause or delete only after a
    fresh read and explicit approval.
-6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
-   an RFC3339 `client_timestamp`, confirm with the developer, and submit it to
-   the events endpoint.
-7. **Report.** On success, report "event accepted, `event_id=<id>`". Say that
-   this skill cannot yet read back whether the quest executed, and that the
-   developer should check the outcome where the reward lands. Never claim a
-   reward was delivered.
+6. **Event.** Fetch the collector OpenAPI and confirm `POST /api/v2/events`
+   still lists BasicAuth. Build the payload, generate a fresh UUID
+   `idempotency_key`, set an RFC3339 `client_timestamp`, show the exact body
+   and a copy-paste `curl` example using the project's Basic credential,
+   confirm with the developer, and submit it only after the quest is active
+   and its Web3 wallet preflight passes. Do not use the removed project route
+   or switch credentials automatically. If the route or BasicAuth is absent,
+   stop and report the blocker.
+7. **Report.** On success, report "event accepted, `event_id=<id>`" and read
+   the execution back from qp-data. Report the completed action and provider
+   transaction hash when present. A collector `event_id` alone is not
+   execution or delivery proof; never claim a reward was delivered without
+   the required chain or Backpack read-back.
 
 ## Safety stops
 
