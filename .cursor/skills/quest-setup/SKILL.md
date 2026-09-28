@@ -172,7 +172,8 @@ continue on `references/` alone, noting that the envelope may have drifted.
    [Draft first, then activate](references/quest-document.md#draft-first-then-activate);
    when the start moves, re-confirm the end); the limits and effective repeat
    behavior; for Web3, the read-only checks in [`references/rewards.md`](references/rewards.md);
-   and that no event can run it on stage yet (step 6), also for a no-op quest.
+   and that an event can run it on stage only after bring-up confirms the
+   collector route and BasicAuth (step 6), also for a no-op quest.
    Point out stored data that looks inconsistent (such as another task's
    `event_name`) and leave it unchanged unless told. Then ask. After the
    write, read back `status`, the dates, the limits and `version_id`, and
@@ -188,13 +189,15 @@ continue on `references/` alone, noting that the envelope may have drifted.
    difference, report it and stop, no retry. Pause by [Pausing](references/quest-document.md#pausing).
 6. **Event.** Fetch the collector OpenAPI and confirm `POST /api/v2/events`
    still lists BasicAuth. Show the exact payload and the generated
-   `idempotency_key`, then send only after the quest is active, in its date
-   window, and any Web3 wallet preflight passes. Do not use the removed project
-   route or fall back to another credential. If the live route or BasicAuth is
-   absent, stop and report the route blocker. For an `inactive` quest, say an
-   event could not run it anyway. Mixed request (create or fill plus an event):
-   do the doable parts first, then report any block with the quest id, status
-   and `event_name`. See [`references/events.md`](references/events.md).
+   `idempotency_key`, and provide a copy-paste `curl` example using the
+   project's Basic credential. Send only after the quest is active, in its
+   date window, and any Web3 wallet preflight passes. Do not use the removed
+   project route or fall back to another credential. If the live route or
+   BasicAuth is absent, stop and report the route blocker. For an `inactive`
+   quest, say an event could not run it anyway. Mixed request (create or fill
+   plus an event): do the doable parts first, then report any block with the
+   quest id, status and `event_name`. See
+   [`references/events.md`](references/events.md).
 7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
    with the collector's returned `event_id` as described in
    [`references/verification.md`](references/verification.md), and report
