@@ -67,7 +67,7 @@ route unauthenticated. A plain-text `Cannot GET <path>` or `Cannot POST
 - [`references/quest-document.md`](references/quest-document.md): the quest graph, conditional requirements, full-document PUT
 - [`references/node-subtypes.md`](references/node-subtypes.md): the seven accepted node subtypes and their parameters
 - [`references/conditions.md`](references/conditions.md): condition types, operands, operators and event counting
-- [`references/conditions.md`](references/conditions.md): condition grammar: types, operands, operators, event counting
+- [`references/rewards.md`](references/rewards.md): the nine reward types and their bodies, including Web3 rewards
 
 ## Flow
 
@@ -83,8 +83,9 @@ route unauthenticated. A plain-text `Cannot GET <path>` or `Cannot POST
    sending it. Do not silently invent a trigger, action or reward value.
 4. **Activate.** Use a separate PUT after checking the graph has at least two
    nodes, a trigger-to-action path, no intended orphan nodes and no cycle.
-   Confirm dates and activation limits. For a Web3 reward, confirm the SKU,
-   amount and recipient wallet with the developer before activation.
+   Confirm dates and activation limits. For a Web3 reward, follow
+   [`references/rewards.md`](references/rewards.md), confirm the SKU, amount
+   and recipient wallet, and get approval before activation.
 5. **Edit.** Read the quest, change the full document and warn that `PUT`
    replaces everything omitted from the body. Show a before/after diff and
    read the quest back after the approved write. Pause or delete only after a
