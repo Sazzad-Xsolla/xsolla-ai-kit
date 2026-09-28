@@ -1,7 +1,12 @@
 # Conditions
 
+Stage OpenAPI and local runtime snapshots were checked on 2026-09-22; the
+worker's counting code was rechecked on 2026-09-25. The stage deployment
+revision is not pinned here, so revalidate before writes.
+
 These are the `parameters` of a node with `type: condition` and
-`subtype: custom_attributes_check`.
+`subtype: custom_attributes_check`. The OpenAPI document does not describe
+them at all.
 
 ## Shape
 
@@ -33,6 +38,16 @@ These are the `parameters` of a node with `type: condition` and
 An `event` operand supports numeric comparison only, and the threshold it is
 compared against must be a whole number.
 
+An `attribute` operand cannot read the event's `properties`. The worker
+evaluates a condition against a map built from two sources only: event counts
+for `event` operands and the user's Login attributes for `attribute` operands
+(from the worker code at adtech 873d3c7a3c, `buildConditionAttribs`; the
+deployed revision is not pinned). No operand reads the arriving event's
+payload. For a vague "check the event", ask what should be checked and offer
+what exists: an `event` count operand (how many times), or the trigger's
+`event_name` (which event starts the quest). A check on a property value
+cannot be expressed today; say so.
+
 ## Operators
 
 `operator.type` constrains `operator.operation`:
@@ -63,14 +78,36 @@ Leaving out `time_window` on an `event` operand is the most common mistake
 here, and the error comes back as a flattened 422 string rather than a field
 error.
 
-## When a condition runs
+## Runtime prerequisites
 
-- An `attribute` operand makes the platform read the user's attributes from
-  Xsolla Login, so the event must carry an `xsolla_id`. The attribute path must
-  exist on the user: a well-formed comparison on `user.country` still cannot be
-  evaluated if the user has no such attribute.
-- An `event` operand counts events already submitted for the same user and
-  scope. The triggering event and the earlier events must use the intended
-  user and event name.
-- The contract does not define the calendar boundary or timezone for `week`.
-  Do not promise a particular interpretation.
+- An attribute operand causes the current worker to load user attributes from
+  Login and requires an `xsolla_id` on the event. The attribute path must exist;
+  a structurally valid `user.country` comparison can still be unevaluable.
+- An event operand counts distinct `idempotency_key`s of ingested events for
+  the same identity and a visible scope. The identity is the event's
+  `xsolla_id`, else `gamer_id`, else `email`; a `guest_id` is not used for
+  counting. The triggering event and its history must use the intended user
+  and event name.
+- Counting is per account: only events that arrived in the quest's account
+  count. On the project lane that means events sent through the same
+  project's event route; events sent with another credential land in another
+  account and never count (from the worker code). The event's `publisher`
+  block, if any, adds publisher and project scopes to what is visible; it does
+  not narrow the count. See `events.md`.
+- **The arriving event counts.** `gte 2` per `day` passes on the second
+  qualifying event: the first gave `IN_PROGRESS` with `actual` 1, the second
+  `COMPLETED` with 2 (observed on stage 2026-09-25). So `gte 1` (or `gt 0`)
+  always passes on the first qualifying event, because that event is already
+  counted: it gates nothing. For "on the Nth event", use `gte N`.
+- Events are indexed on ingestion, before quest matching, so events sent while
+  the quest was inactive or out of its dates, or tagged `load_test`, can count
+  too (from the consumer code; the deployed revision is not pinned).
+- `day`, `week` and `month` are fixed calendar windows, not rolling ones: the
+  current day, the week from Monday, or the calendar month, taken in the
+  timezone of the event's server timestamp, which reads back as UTC. Events of
+  the last few minutes can also count from a short-lived index regardless of
+  the window, so near a boundary the count can include an event from the
+  previous period. Do not promise a local-calendar interpretation.
+- A condition miss leaves an `IN_PROGRESS` row with no actions; it never turns
+  into `COMPLETED` by itself. Execution status is reported after the event
+  flow has a read-back reference.
