@@ -72,18 +72,21 @@ route unauthenticated. A plain-text `Cannot GET <path>` or `Cannot POST
 1. **Bring-up.** Fetch the OpenAPI documents for the services the task calls,
    run the scoped project and quest-list reads, show the merchant id,
    `project_id`, `name` and `status`, and get confirmation before a write.
-2. **Draft.** Create the quest as `inactive` with the four required fields.
-3. **Fill in.** Add nodes and edges one at a time, asking for each missing
-   required value. Show the assembled document before sending it.
-4. **Activate.** A separate step: move to `active` with dates, after checking
-   there are at least two nodes, a trigger-to-action path, no intended orphan
-   nodes, and an acyclic graph.
-   For a Web3 reward, also confirm the SKU, the amount and the
-   recipient's wallet with the developer.
-   Show the activation limits and the effective repeat behavior before asking
-   for confirmation.
-5. **Edit.** Read, change, full `PUT`. Warn that `PUT` replaces the whole
-   document.
+2. **Draft.** Create the quest as `inactive` with `name`, `type`, `status` and
+   `created_by`; the project route stamps `publisher_id` and `project_id` from
+   the path. Show the body and get approval before `POST`.
+3. **Fill in.** Gather required node values and connections, then follow the
+   full-document PUT recipe in [`references/quest-document.md`](references/quest-document.md).
+   Show the assembled document and the impact of any external action before
+   sending it. Do not silently invent a trigger, action or reward value.
+4. **Activate.** Use a separate PUT after checking the graph has at least two
+   nodes, a trigger-to-action path, no intended orphan nodes and no cycle.
+   Confirm dates and activation limits. For a Web3 reward, confirm the SKU,
+   amount and recipient wallet with the developer before activation.
+5. **Edit.** Read the quest, change the full document and warn that `PUT`
+   replaces everything omitted from the body. Show a before/after diff and
+   read the quest back after the approved write. Pause or delete only after a
+   fresh read and explicit approval.
 6. **Event.** Build the payload, generate a fresh UUID `idempotency_key`, set
    an RFC3339 `client_timestamp`, confirm with the developer, and submit it to
    the events endpoint.
@@ -101,6 +104,9 @@ route unauthenticated. A plain-text `Cannot GET <path>` or `Cannot POST
   `send_http_webhook` sends event data to an external URL;
   `send_xsolla_app_notification` sends a user notification. Do not activate a
   `webshop_personalization` node as if it were a working personalization action.
+- Urgency never supplies missing values. Ask for `type`, `created_by`, trigger,
+  action, dates and activation limits, and use one approval for the exact body
+  shown after all answers are applied.
 - If `activation_limits` is absent, ask the developer to explicitly choose
   unlimited repeat behavior and acknowledge that every qualifying event may run
   the action. Do not silently choose a limit or omit this decision.
