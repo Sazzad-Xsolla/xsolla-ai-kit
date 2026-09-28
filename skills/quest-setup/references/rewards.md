@@ -145,12 +145,23 @@ event's `user_ids` must include an `xsolla_id`, and that user must already have
 a wallet. Before activation and again before submitting an event, read the
 minting service's wallet lookup for that `xsolla_id`
 ([`auth-and-environment.md`](auth-and-environment.md)). A 404 means no wallet:
-the reward fails with `RecipientNotFound`, non-retryable. Report it and stop.
+the reward fails with `RecipientNotFound`, non-retryable. Report it and stop
+before sending an event or attempting a claim. If an authorized, supported
+thirdweb or Web3 authentication flow is available, it may provision the exact
+subject's ecosystem wallet; after that flow, repeat this lookup and verify the
+same `xsolla_id` before continuing. Never substitute another user, use an
+unverified address, or treat `POST /claim/address` as subject delivery proof.
 
 A 200 carries `walletAddress` and `recipientSource`. Check both, not only the
 status: the worker treats only `recipientSource: thirdweb:smart` as a wallet
 the player sees in Backpack, and logs any other source as a payout the player
 may not see. Tell the developer if the source differs.
+
+`web3_item` mints a chain NFT. It does not create a Backpack inventory-item
+SKU row through the separate Backpack grant API. If acceptance requires a
+Backpack inventory row or SKU balance, use and verify a separate
+`inventory_item` reward; do not equate an NFT mint, a Backpack NFT detail view,
+and an inventory-item balance.
 
 ## Payout errors surface late
 
@@ -171,7 +182,11 @@ project's catalog with the qualified minting lookup and use only a returned
 observed default catalog. Never derive a Web3 project from the quest's
 `project_id`, and never use an unqualified fallback after a qualified lookup
 fails. Read the selected catalog and use a real `items[].sku`; do not invent
-one.
+one. A 200 `/skus` response and 200 project-qualified metadata response prove
+catalog visibility only. The catalog may return an ordinary `virtual_good`
+without contract or token fields; do not treat that read-back as mint or
+Backpack delivery evidence. A live completion still needs the qp-data action,
+provider minted-instance, transaction and chain read-backs described below.
 
 Eljan's stage fixture on 2026-09-28 is evidence for one project-qualified path
 only: its `issue_reward` body named project `306916`, and the provider
