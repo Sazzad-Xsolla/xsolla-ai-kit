@@ -96,8 +96,10 @@ quest read. The response has no account or workspace id; do not guess one.
 ## Service preflight
 
 Use one read before the first call to each service, only for services the task
-will call. The collector has no Basic event route on current stage; fetch its
-OpenAPI when a task may send an event and report that block. qp-data answers
+will call. The fixed stage collector accepts the publisher Basic lane on
+`POST /api/v2/events` when the body carries matching publisher fields; fetch its
+OpenAPI before an event and recheck the live auth result. A 401 is an auth or
+deployment blocker, not a reason to use the old project route. qp-data answers
 without a credential and must be queried only with the developer's own
 confirmed scope.
 

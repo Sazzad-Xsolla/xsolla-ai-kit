@@ -20,9 +20,10 @@ metadata:
 ## Status
 
 This skill is a **draft**. On stage the publisher Basic credential works on
-merchant-scoped project routes; production is not checked. The collector has
-no Basic event route on stage, so event submission remains unavailable on this
-lane.
+merchant-scoped project routes, and the fixed collector accepts
+`POST /api/v2/events` with matching publisher fields (rechecked 2026-09-28).
+Production is not checked. An accepted `event_id` is not execution or delivery
+proof; verify qp-data, provider settlement and Backpack or chain read-backs.
 
 ## When to use
 
