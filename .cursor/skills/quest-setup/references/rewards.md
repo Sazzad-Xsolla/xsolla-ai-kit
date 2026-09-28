@@ -35,8 +35,8 @@ smoke test, offer the no-op action in [`node-subtypes.md`](node-subtypes.md).
 | `custom` | `{"amount": <number>, "currency_ticker": "<string>"}` | `amount` greater than 0 |
 | `inventory_item` | `{"xsolla_item": <bool>, "items": [{"sku": "<string>", "quantity": <int>, "type": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}], "item_sku": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}` | `items` or `item_sku`; item quantity 0 to 100 and defaults to 1 at runtime. `xsolla_item` omitted means `false` |
 | `vc_wallet_ticket` | `{"quantity": <int>, "currency_ticker": "<string>"}` plus optional `playtime` | `quantity` greater than 0 |
-| `web3_item` | `{"item_sku": <string or array>, "quantity": <int>}` plus optional `project` | body must not be empty. `quantity` must not be negative and omitted or zero is treated as 1 by the worker. No `item_sku` means a random item from the selected catalog, see below. The worker ignores `xsolla_item`; omit it |
-| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` | both required. `amount` must be a positive integer in token base units. The worker supplies its configured ERC-20 project to the minting service; the quest body has no project selector |
+| `web3_item` | `{"item_sku": <string or array>, "quantity": <int>}` plus optional `project` | body must not be empty. `quantity` at least 0, and omitted or zero defaults to 1 at runtime. No `item_sku` means a runtime-dependent item selection, see below. The worker ignores `xsolla_item` here; omit it |
+| `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` | both required. Keep `amount` a positive integer in base units; the worker's configured ERC-20 project is used |
 
 The optional `playtime` object on `vc_wallet_ticket` is
 `{"earn_rate_minutes": <greater than 0>, "daily_cap_minutes": <greater than 0>, "timezone": "<non-empty>"}`.
@@ -81,12 +81,20 @@ the type in this table:
 | `type` | Catalog | Read |
 |---|---|---|
 | `inventory_item`, `lootbox` | the confirmed project (Scope in [`auth-and-environment.md`](auth-and-environment.md)) | the Store API catalog reads |
-| `web3_item` | the body's `project` if set, else the worker's default NFT catalog | the minting service SKU lookup, see [web3_item](#web3_item) |
+| `web3_item` | the body's `project` if set, else the worker's default NFT minting catalog | qualified minting SKU lookup when set, otherwise the unqualified lookup, see [web3_item](#web3_item) |
 | `web3_token` | none: a token is not a catalog item | the currency bindings, see [web3_token](#web3_token) |
 
 Both reads are described, with their hosts, in
 [`auth-and-environment.md`](auth-and-environment.md). They need no credential;
-never send the project API key to them. Then:
+never send the project API key to them. Store API reads apply only to
+`inventory_item` and `lootbox`. For `web3_item`, carry the body project through
+the qualified lookup when it is set; otherwise use the unqualified lookup
+against the service's observed default. A qualified lookup that returns no
+match or 404 is a hard stop: do not retry it unqualified or fall back to the
+default. A Publisher Store row is not proof that minting exposes the same item;
+require the selected minting SKU and project-qualified metadata reads. The
+stage Publisher row for project `316575` and the production Publisher/IGS path
+for `316575` are unverified. Then:
 
 1. Match the developer's words against `name` and `description`, reading
    every page. If exactly one item matches, show its `name`, `sku` and image
@@ -94,12 +102,13 @@ never send the project API key to them. Then:
    match, including items with the same name, list them with their SKUs and
    let the developer choose. Never pick one silently.
 2. If the developer gave a SKU, check it: the Store SKU read for
-   `inventory_item` and `lootbox`, or its presence in the minting SKU list for
-   `web3_item`. When `web3_item.body.project` is set, include that project in
-   the minting lookup. Show the item it points to before using it.
+   `inventory_item` and `lootbox`, or its presence in the selected minting SKU
+   list for `web3_item`. When `web3_item.body.project` is set, include that
+   project in the minting lookup. Show the item it points to before using it.
 3. If nothing matches, or the SKU read returns 404, say so and stop. Do not
-   guess a close SKU. The item may be missing, or not enabled in the catalog.
-   To create or enable it, use the `catalog-design` skill, then come back.
+   guess a close SKU or fall back to another catalog. The item may be missing,
+   or not enabled in the selected catalog. To create or enable it, use the
+   `catalog-design` skill, then come back.
    When `web3_item.body.project` was set, do not retry the lookup without that
    project or fall back to the service default.
 
@@ -134,7 +143,8 @@ Check this before activation and again when you build the event:
 | `web3_item`, `web3_token` | an `xsolla_id` whose user has a wallet, see "Web3 recipient" | `FAILED`, `RecipientNotFound` |
 
 The `publisher` block must still equal the quest's `publisher_id` and
-`project_id` exactly, or the event matches no quest at all. So for these types send the quest's own values,
+`project_id` exactly, or the event matches no quest at all; see
+[`events.md`](events.md). So for these types send the quest's own values,
 never different ones. `xsolla_points` for a guest user is skipped by the
 worker and reported as completed without a grant on stage.
 
@@ -144,13 +154,15 @@ Both `web3_item` and `web3_token` pay to the wallet of the event's user. The
 event's `user_ids` must include an `xsolla_id`, and that user must already have
 a wallet. Before activation and again before submitting an event, read the
 minting service's wallet lookup for that `xsolla_id`
-([`auth-and-environment.md`](auth-and-environment.md)). A 404 means no wallet:
-the reward fails with `RecipientNotFound`, non-retryable. Report it and stop
-before sending an event or attempting a claim. If an authorized, supported
-thirdweb or Web3 authentication flow is available, it may provision the exact
-subject's ecosystem wallet; after that flow, repeat this lookup and verify the
-same `xsolla_id` before continuing. Never substitute another user, use an
-unverified address, or treat `POST /claim/address` as subject delivery proof.
+([`auth-and-environment.md`](auth-and-environment.md)). A 404 means no
+wallet: the reward fails with `RecipientNotFound`, non-retryable. Report it
+and stop before creating, activating or sending a Web3-bearing flow. If an
+authorized, supported thirdweb or Web3 authentication flow is available, it
+may provision the exact subject's ecosystem wallet; after that flow, repeat
+this lookup and verify the same `xsolla_id` before continuing. Never substitute
+another user, use an unverified address, or treat `POST /claim/address` as
+subject delivery proof. If the Web3 reward is added to an existing draft,
+leave it unfilled or trigger-only until this preflight passes.
 
 A 200 carries `walletAddress` and `recipientSource`. Check both, not only the
 status: the worker treats only `recipientSource: thirdweb:smart` as a wallet
@@ -165,37 +177,38 @@ and an inventory-item balance.
 
 ## Payout errors surface late
 
-qp-server does not check a Web3 body against the minting service. A SKU that
-is not bound or an amount the provider rejects may still be accepted on
-create, `PUT` and activation. These mistakes appear only at payout time, as a
-`FAILED` `issue_reward` action whose `error` names the cause. Run the checks
-below before activation.
+qp-server does not check a Web3 body against the minting service. It can save
+an invalid amount, an unbound SKU or a SKU from the wrong catalog on create,
+`PUT` and activation. These mistakes appear at payout time as a `FAILED`
+`issue_reward` action whose `error` names the cause; see
+[`verification.md`](verification.md). Confirm the selected catalog, current
+binding and positive base-unit amount before activation.
 
 ## web3_item
 
 An NFT from the minting service's catalog. Find the item as in
 [Picking the item from the catalog](#picking-the-item-from-the-catalog).
 
-SKUs come from the IGS publisher catalog. If `project` is set, list that
-project's catalog with the qualified minting lookup and use only a returned
-`items[].sku`. If it is omitted, omit the project query and use the service's
-observed default catalog. Never derive a Web3 project from the quest's
-`project_id`, and never use an unqualified fallback after a qualified lookup
-fails. Read the selected catalog and use a real `items[].sku`; do not invent
-one. A 200 `/skus` response and 200 project-qualified metadata response prove
-catalog visibility only. The catalog may return an ordinary `virtual_good`
-without contract or token fields; do not treat that read-back as mint or
-Backpack delivery evidence. A live completion still needs the qp-data action,
-provider minted-instance, transaction and chain read-backs described below.
+SKUs come from the minting service's catalog. If `project` is set, use the
+qualified lookup for that project. If it is omitted, use the unqualified lookup
+against the service's observed default catalog. Never derive a minting project
+or SKU from the quest's `project_id`, and never use the default as a fallback
+after a qualified lookup fails. Never use a Store SKU unless it is also
+returned by the selected minting lookup. Read the selected catalog and use a
+real `items[].sku`; do not invent one. A 200 `/skus` response and 200
+project-qualified metadata response prove catalog visibility only. The catalog
+may return an ordinary `virtual_good` without contract or token fields; do not
+treat that read-back as mint or Backpack delivery evidence. A live completion
+still needs the qp-data action, provider minted-instance, transaction and chain
+read-backs described below.
 
-Eljan's stage fixture on 2026-09-28 is evidence for one project-qualified path
-only: its `issue_reward` body named project `306916`, and the provider
-minted-instance read-back named `projectId:306916` with a `txHash`. It is not
-evidence for target project `316575`. The deployed worker SHA and outbound
-claim request are unavailable, so treat project forwarding as runtime behavior
-to verify, not as a deployment-wide guarantee. After a live reward, match the
-qp-data action body's project and the provider minted-instance `projectId` and
-`txHash` before reporting the result.
+The stage deployment revision and outbound claim request are not pinned here.
+Eljan's 2026-09-28 fixture demonstrates one qualified path for project `306916`
+only: qp-data recorded the reward body project, and the provider minted-instance
+read-back recorded the same `projectId` and a `txHash`. It does not prove target
+project `316575` or every stage worker revision. Verify each live run by
+matching the qp-data action body project with the provider minted-instance
+`projectId` and `txHash` before reporting the result.
 
 The indexed dev `Web3ItemBody` snapshot has no `Project` field, so this
 qualified form is conditional on the deployed qp-server and worker preserving
@@ -236,12 +249,15 @@ An ERC-20 payout, for example USDC.
 ```
 
 The SKU and amount above are illustrative only, not an owner-approved stage
-fixture. Confirm the token decimals and amount with the Web3 owner before use.
+fixture. Confirm the binding and token decimals before activation.
 
-**`amount` is a positive integer in the token's base units.** Confirm the
-token's decimals with the owner or provider, show the exact base-unit integer
-before activation, and report provider-side range or precision errors
-verbatim. Do not send a decimal amount.
+**`amount` is a positive integer in the token's base units** (observed on stage
+2026-09-23, revalidate). The worker passes `body.amount` to the minting service
+verbatim. The service rejects a decimal with a 400, `amount must be a positive
+integer (digits only, no sign or decimal point)`. USDC has 6 decimals, so
+`1000000` is 1.00 USDC and `10000` is 0.01 USDC. Get the token's decimals
+from the developer or the owner, never guess them, and show both the token
+amount and the base-unit integer before activation.
 
 **`item_sku` must be a current ERC-20 binding of the worker's configured
 ERC-20 project.**
@@ -249,19 +265,17 @@ A token is not a catalog item, so the catalog lookup does not apply here.
 Never search the Store or the NFT catalog for a token.
 Read the minting service's currency bindings
 ([`auth-and-environment.md`](auth-and-environment.md)) and pick a binding with
-`tokenStandard: erc20` whose `projectId` equals the worker's ERC-20 project, or
-the configured project. A binding carries `sku`, `projectId`,
-`contractAddress` and `tokenStandard`, but no symbol or decimals: ask the
-developer which binding SKU is the token and its decimals. If they do not
-know, tell them to ask the Web3 owner; do not guess from the SKU.
-Bindings change, so read them each session rather than reusing a SKU from
-memory. An unbound SKU fails at payout with a 400, `no ERC-20 token is
-configured for project <id> / sku <sku>`.
+`tokenStandard: erc20` whose `projectId` equals the worker's configured ERC-20
+project. A binding carries `sku`, `projectId`, `contractAddress` and
+`tokenStandard`, but no symbol or decimals: ask the developer which binding SKU
+is the token and its decimals. If they do not know, tell them to ask the Web3
+owner; do not guess from the SKU. Bindings change, so read them each session
+rather than reusing a SKU from memory. An unbound SKU fails at payout with a
+400, `no ERC-20 token is configured for project <id> / sku <sku>`.
 
-**The ERC-20 project comes from the worker's environment** and cannot be
-selected by the quest body. It never comes from the quest's `publisher_id` or
-`project_id`. Where it is not configured, every `web3_token` reward fails with
-`Web3TokenNotConfigured`, non-retryable.
+**The ERC-20 project comes from the worker's environment**, never from the
+body or the quest's `publisher_id` or `project_id`. Where it is not configured,
+every `web3_token` reward fails with `Web3TokenNotConfigured`, non-retryable.
 Currently only stage has it; see
 [`auth-and-environment.md`](auth-and-environment.md). Do not offer this reward
 in another environment without owner confirmation.
@@ -274,11 +288,10 @@ balance and Backpack or Rewards display are outside this skill's evidence.
 Never claim that the token reached the wallet. The hash is recorded by the
 worker, not in qp-data: its logs carry a `tx_hash` field on the
 `claim_web3_token` success line, and its ledger keeps the hash only inside the
-reward node's result text (`Transaction hash: <hash>`), not as a separate
-field. The minting service also exposes a read-only minted-instances lookup
-for successful claims, including the SKU, amount and possibly `txHash`; this
-is provider read-back, not proof of chain finality, balance or Backpack
-visibility. A human can check the hash on the chain explorer named in
+reward node's result text (`Transaction hash: <hash>`), not as a separate field. The minting service's `GET /minted-instances/{xsolla_id}` read can provide
+provider records with project, SKU, token standard, amount and possibly a
+transaction hash. It does not prove chain finality, current balance or
+Backpack display. A human can check the hash on the chain explorer named in
 [`auth-and-environment.md`](auth-and-environment.md).
 
 **Duplicate payout risk.** The claim carries no idempotency key. The reward
@@ -287,8 +300,8 @@ claim are non-retryable, but an activity timeout or a worker crash after the
 provider paid can run the claim again. qp-data writes a row only after the
 execution finishes, so a claim in flight shows as no row. An `IN_PROGRESS`
 row is never an in-flight claim: it means a condition was not met and no
-action ran. If the row is still missing after the read policy for execution
-read-back, or the
+action ran (see [`verification.md`](verification.md)). If the row is still
+missing after the read policy in [`verification.md`](verification.md), or the
 reward action failed on a timeout, do not resend the event. Escalate to the
 Quest Platform team, who own the worker logs and ledger, with the quest id,
 `event_id`, `idempotency_key`, user and time; a human can also check the
