@@ -132,9 +132,8 @@ Once all credentials are confirmed, write them to `.env` in the project root. Us
 **If `.env` already exists**, append or update only the Xsolla variables without touching existing content:
 
 ```bash
-# Remove only the three credential lines this skill owns, then append fresh values.
-# Do NOT delete every ^XSOLLA_ line: other skills record their own keys there
-# (e.g. XSOLLA_BUILD_PATH from shop-plan) and a blanket delete silently erases them.
+# Remove only this skill's own three keys. Deleting every ^XSOLLA_ line also erases
+# keys other skills record there, such as XSOLLA_BUILD_PATH from shop-plan.
 sed -i.bak -E '/^XSOLLA_(MERCHANT_ID|PROJECT_ID|PROJECT_API_KEY)=/d' .env && rm .env.bak
 cat >> .env << EOF
 

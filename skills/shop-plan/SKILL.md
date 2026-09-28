@@ -56,11 +56,10 @@ drove it → developer says yes → `XSOLLA_BUILD_PATH=shopbuilder` recorded →
 | Ceiling on custom design | None | Bounded by the block system |
 | Ongoing maintenance | The developer's own frontend | None — Xsolla maintains the UI |
 
-**Both paths are buildable in this kit.** Headless runs `shop-setup` → `catalog-design`,
-`login-setup`, `headless-checkout-integration`, `webhooks-impl`, `production`. Shop Builder runs the
-same shared foundation, then `shopbuilder-storefront` (site → page → blocks → customize), and
-finishes with `webhooks-impl`. Either way, recording the choice is where this skill stops —
-`shop-setup` does the building.
+**Either way, recording the choice is where this skill stops — `shop-setup` does the building.**
+Headless runs `shop-setup` → `catalog-design`, `login-setup`, `headless-checkout-integration`,
+`webhooks-impl`, `production`. Shop Builder runs the same shared foundation, then hands the
+storefront to `shop-builder-assembly`, and finishes with `webhooks-impl`.
 
 ## Steps
 

@@ -37,11 +37,10 @@ esac
   This orchestrator never asks the path itself.
 - **`DECIDED:headless`** → proceed with the rest of this skill as below.
 - **`DECIDED:shopbuilder`** → run the shared foundation below (`merchant-setup`,
-  `catalog-design`, `login-setup`), then hand the storefront to `shopbuilder-storefront`, which
-  sequences `shopbuilder-site` → `shopbuilder-page` → `shopbuilder-blocks` →
-  `shopbuilder-customize`. Finish with `webhooks-impl`. Do **not** run the headless phases
-  (Headless Checkout, headless login code) — the Shop Builder site is hosted and renders its own
-  checkout and login.
+  `catalog-design`, `login-setup`), then hand the storefront to `shop-builder-assembly`, which
+  assembles the site from a structured shop brief. Finish with `webhooks-impl`. Do **not** run the
+  headless phases (Headless Checkout, headless login code) — the Shop Builder site is hosted and
+  renders its own checkout and login.
 - **`INVALID:<value>`** → halt and show the value. `.env` was hand-edited to something that isn't
   a recognized path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
   discards a choice the developer already made. Point them at `shop-plan` to correct it.

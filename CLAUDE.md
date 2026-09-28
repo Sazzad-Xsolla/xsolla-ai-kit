@@ -18,12 +18,6 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-plan`                     | **Decides the build path** — headless vs Shop Builder, before any account or build work  |
 | `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
-| `shopbuilder-storefront`        | **Shop Builder branch** — sequences the four level skills below                          |
-| `shopbuilder-site`              | Shop Builder level 1 — the site: identity, locales, brand seed theme, domain             |
-| `shopbuilder-page`              | Shop Builder level 2 — the page: theme that ships, backdrop, SEO                         |
-| `shopbuilder-blocks`            | Shop Builder level 3 — blocks: the storefront's sales funnel                             |
-| `shopbuilder-customize`         | Shop Builder level 4 — block content: copy, imagery, sections, per-block theme           |
-| `shopbuilder-custom-block`      | Shop Builder escape hatch — author and deploy a custom React block                       |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -43,16 +37,13 @@ Should I use Shop Builder or build a headless shop?
 → triggers: shop-plan (weighs five criteria, shows the trade-offs, records the choice)
 
 Set up a full Xsolla game shop for my project
-→ triggers: shop-setup — which delegates to shop-plan first if no path is recorded
+→ triggers: shop-setup
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
 
 Integrate payments into my game
 → triggers: headless-checkout-integration
-
-Build my Shop Builder storefront / add a block / theme the site
-→ triggers: shopbuilder-storefront — after shop-plan records the shopbuilder path
 
 Go live / leave sandbox
 → triggers: production
@@ -74,13 +65,6 @@ XSOLLA_BUILD_PATH=headless|shopbuilder
 ```
 Recorded by `shop-plan` once the developer confirms the build path, and read by `shop-setup`
 before it builds anything. One path per shop — `shop-plan` is the only skill that writes it.
-
-```bash
-XSOLLA_SHOPBUILDER_SESSION=<pa-v4-token cookie value>
-```
-Needed only by the Shop Builder skills, for the few operations with no CLI route (custom-block
-deploy, authenticated preview). Copied by hand from a Publisher Account session and it expires —
-a known gap, documented rather than worked around. It is a secret: never commit or log it.
 
 Adding a skill that behaves differently per path? Implement against
 [the build-path contract](skills/shop-plan/references/build-path-contract.md) — it covers the
