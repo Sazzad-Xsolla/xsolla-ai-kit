@@ -18,16 +18,18 @@ merchant-prefixed event route. Use only `/api/v2/events`.
 At bring-up, fetch the collector OpenAPI and confirm that the route and the
 BasicAuth scheme are still present. An `OPTIONS` request may answer `405` with
 `Allow: POST`; that confirms the route is POST-only, not that the route is
-missing. Send the developer's selected Basic credential only after the quest
-scope and reward wallet preflights pass. The current stage check intentionally
-sent no event because project `316575` has no Publisher catalog item and the
-Backpack identity has no wallet. Route availability is not execution or reward
-proof.
+missing. On the fixed stage deployment, a project Basic request with a missing
+body field reached validation with HTTP 422, and a matching authorized event
+returned HTTP 200 with an `event_id`. Send the project's Basic credential only
+after the quest scope and reward wallet preflights pass, with the matching
+`publisher` block. Route availability and `event_id` are not execution or
+reward proof.
 
-The service-key and Bearer lanes are outside this skill. Never switch to them
-as a fallback, and never send an event to the old project route. A 404 plain
-text `Cannot POST <path>` follows the route-missing rule in
-[`auth-and-environment.md`](auth-and-environment.md).
+The service-key and Bearer lanes remain explicit alternatives when a valid
+credential is supplied, not credentials to guess or silently substitute. If the
+live Basic request returns 401, report the exact auth response and stop; do not
+use the old project route. A 404 plain text `Cannot POST <path>` follows the
+route-missing rule in [`auth-and-environment.md`](auth-and-environment.md).
 
 A mixed request (for example, "create the quest, fill it in, then send a test
 event") still runs each approved step through its own confirmation. If the
@@ -102,11 +104,12 @@ took it from the project in the path.
 
 A 200 returns `{"idempotency_key": "...", "event_id": "<uuid>"}`.
 
-The scopeless `POST /api/v2/events` takes an API key or a Bearer token
-(Publisher Account JWT), not the project credential; this skill covers
-neither. See
-[`auth-and-environment.md`](auth-and-environment.md) for who may use those
-lanes. Never call `/api/v2/debug/trigger-outbox`.
+The scopeless `POST /api/v2/events` accepts the fixed stage publisher Basic
+lane when the body carries matching `publisher_id` and `project_id`; it also
+advertises API-key and Publisher Bearer lanes. Use the project Basic lane for
+this skill when its live auth check succeeds. Do not guess or substitute an
+API key or Bearer token from another account, and never call
+`/api/v2/debug/trigger-outbox`.
 
 ## Before sending
 
@@ -170,8 +173,8 @@ generated or reused is a developer-supplied key: the match is weaker
 identification, so also require the user and a `server_timestamp` close to
 the stated send time, and say so in the report.
 
-If the developer reports a timeout: a Basic send never becomes a run, because
-`POST /api/v2/events` answers it with a 401 before qp-server (see the top of
-this file). A timeout suggests another route or credential, and which one
-their script used is unknown. Say so, ask which route and header it used, and
-still verify read-only.
+If the developer reports a timeout, do not infer whether the event was
+accepted. The current fixed stage Basic lane can authenticate, but a stale
+deployment or wrong credential may still return 401. Ask which route and
+header were used, then verify read-only with the supplied event identifiers;
+do not resend an uncertain request.
