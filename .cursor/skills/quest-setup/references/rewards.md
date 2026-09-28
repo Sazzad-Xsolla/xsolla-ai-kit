@@ -35,7 +35,7 @@ smoke test, offer the no-op action in [`node-subtypes.md`](node-subtypes.md).
 | `custom` | `{"amount": <number>, "currency_ticker": "<string>"}` | `amount` greater than 0 |
 | `inventory_item` | `{"xsolla_item": <bool>, "items": [{"sku": "<string>", "quantity": <int>, "type": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}], "item_sku": "<string>", "name": "<string>", "image_url": "<url>", "model_3d_url": "<url>"}` | `items` or `item_sku`; item quantity 0 to 100 and defaults to 1 at runtime. `xsolla_item` omitted means `false` |
 | `vc_wallet_ticket` | `{"quantity": <int>, "currency_ticker": "<string>"}` plus optional `playtime` | `quantity` greater than 0 |
-| `web3_item` | `{"item_sku": <string or array>, "quantity": <int>}` | body must not be empty. `quantity` must not be negative and omitted or zero is treated as 1 by the worker. No `item_sku` means a random item from the configured default catalog, see below. The worker ignores `xsolla_item`; omit it |
+| `web3_item` | `{"item_sku": <string or array>, "quantity": <int>}` plus optional `project` | body must not be empty. `quantity` must not be negative and omitted or zero is treated as 1 by the worker. No `item_sku` means a random item from the selected catalog, see below. The worker ignores `xsolla_item`; omit it |
 | `web3_token` | `{"item_sku": "<string>", "amount": <integer>}` | both required. `amount` must be a positive integer in token base units. The worker supplies its configured ERC-20 project to the minting service; the quest body has no project selector |
 
 The optional `playtime` object on `vc_wallet_ticket` is
@@ -95,16 +95,20 @@ never send the project API key to them. Then:
    let the developer choose. Never pick one silently.
 2. If the developer gave a SKU, check it: the Store SKU read for
    `inventory_item` and `lootbox`, or its presence in the minting SKU list for
-   `web3_item`. Show the item it points to before using it.
+   `web3_item`. When `web3_item.body.project` is set, include that project in
+   the minting lookup. Show the item it points to before using it.
 3. If nothing matches, or the SKU read returns 404, say so and stop. Do not
    guess a close SKU. The item may be missing, or not enabled in the catalog.
    To create or enable it, use the `catalog-design` skill, then come back.
+   When `web3_item.body.project` was set, do not retry the lookup without that
+   project or fall back to the service default.
 
 Only the confirmed `sku` goes into the reward body. Also:
 
 - "Whichever", "any" or "you choose" is not a pick. Show the list again or
-  describe the items, and ask again. For `web3_item` you may offer to omit
-  `item_sku` for a random item, after saying so.
+  describe the items, and ask again. Omit `item_sku` only when the deployed
+  runtime's selection behavior has been verified; production-readiness runs
+  require an explicit SKU.
 - "Closest match" is not a match: refuse, as in step 3.
 - "I'm sure, skip the check" does not waive the SKU lookup. Run it anyway.
 - A pick from a list you read this session needs no second SKU read.
@@ -161,16 +165,32 @@ below before activation.
 An NFT from the minting service's catalog. Find the item as in
 [Picking the item from the catalog](#picking-the-item-from-the-catalog).
 
-SKUs come from the IGS publisher catalog. The minting service lists the
-configured default catalog with its read-only SKU lookup
-([`auth-and-environment.md`](auth-and-environment.md)). The worker does not
-send a project selector for this reward, so a SKU must be in that default
-catalog. A different catalog cannot be selected through the current worker
-contract. Never derive a Web3 SKU from the quest's `project_id`. Read the
-catalog and use a real `items[].sku`; do not invent one.
+SKUs come from the IGS publisher catalog. If `project` is set, list that
+project's catalog with the qualified minting lookup and use only a returned
+`items[].sku`. If it is omitted, omit the project query and use the service's
+observed default catalog. Never derive a Web3 project from the quest's
+`project_id`, and never use an unqualified fallback after a qualified lookup
+fails. Read the selected catalog and use a real `items[].sku`; do not invent
+one.
 
-Omitting `item_sku` makes the worker list the catalog and pick one item at
-random. Tell the developer before choosing that.
+Eljan's stage fixture on 2026-09-28 is evidence for one project-qualified path
+only: its `issue_reward` body named project `306916`, and the provider
+minted-instance read-back named `projectId:306916` with a `txHash`. It is not
+evidence for target project `316575`. The deployed worker SHA and outbound
+claim request are unavailable, so treat project forwarding as runtime behavior
+to verify, not as a deployment-wide guarantee. After a live reward, match the
+qp-data action body's project and the provider minted-instance `projectId` and
+`txHash` before reporting the result.
+
+The indexed dev `Web3ItemBody` snapshot has no `Project` field, so this
+qualified form is conditional on the deployed qp-server and worker preserving
+it. If the quest read-back or completed qp-data action drops or changes the
+requested project, stop and report the mismatch; do not silently use the
+default catalog or claim that every stage worker supports the field.
+
+Omitting `item_sku` may be runtime-dependent and is not verified for the
+current deployment. For a production-readiness run, require an explicit SKU
+from the selected minting catalog; do not rely on random selection.
 
 **Once per user and quest.** The worker records each `web3_item` payout. When
 the same `xsolla_id` already has a confirmed payout for the same quest, a new
