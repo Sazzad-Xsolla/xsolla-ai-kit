@@ -202,6 +202,6 @@ totally fine. I need it live this week. English only, and just my logo and brand
 
 Result: `shop-plan` selected, the comparison shown, Shop Builder recommended with the criteria that
 drove it named, nothing written until "yes", then `shopbuilder` recorded once and the agent stopped.
-Over the 19 fixed intents in `evals/shop-plan/cases.json`, two rounds each (2026-09-23): the
-recommended path matched the known answer 20/20, zero writes before confirmation across 28 runs, and
-headless prompts still reached their own skills 10/10. ✅
+Across 19 fixed intents, two rounds each (2026-09-23): the recommended path matched the known
+answer 20/20, zero writes before confirmation across 28 runs, and headless prompts still reached
+their own skills 10/10. ✅
