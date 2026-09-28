@@ -19,8 +19,10 @@ metadata:
 
 ## Status
 
-This skill is a **draft**. It requires project API key access to Quest
-Platform, which is rolling out. See Errors for how an unavailable route looks.
+This skill is a **draft**. On stage the publisher Basic credential works on
+merchant-scoped project routes; production is not checked. The collector has
+no Basic event route on stage, so event submission remains unavailable on this
+lane.
 
 ## When to use
 
@@ -40,18 +42,24 @@ was delivered.
 ## Prerequisites
 
 Follow [`references/auth-and-environment.md`](references/auth-and-environment.md)
-for the host, the credential and scope confirmation. The credential is the
-project API key. Use it on the server or agent side only.
+for the credential, hosts, merchant-scoped routes, onboarding and scope. The
+publisher Basic credential is the merchant id plus the project's API key. Do
+not search for another credential when a value is missing. Onboarding is a
+separate offered write and requires the developer to confirm the project is
+their merchant's.
 
 ## Source of truth
 
-1. This skill's `references/` are the contract: routes, fields, node
-   subtypes, node `parameters`, the condition grammar, reward bodies and
-   enums.
-2. If a live response contradicts them, trust the shape of the live response,
-   tell the developer what differed, and do not guess the rest.
-3. If neither answers the question, **ask the developer**. Do not infer a
-   field by analogy with another Xsolla API.
+1. Routes, path parameters, envelopes and top-level required fields come from
+   the live OpenAPI document fetched for the services the task calls.
+2. Node subtypes, parameters, conditions, rewards and rules come from this
+   skill's references.
+3. On conflict, OpenAPI wins on shape and the references win on rules. If
+   neither source answers, ask the developer rather than guessing.
+
+The qp-server document declares no security schemes; that does not make a
+route unauthenticated. A plain-text `Cannot GET <path>` or `Cannot POST
+<path>` is a router miss, not an auth or project failure.
 
 ## Reference material
 
@@ -59,8 +67,9 @@ project API key. Use it on the server or agent side only.
 
 ## Flow
 
-1. **Bring-up.** Check the credential is set. List quests, show the scope that
-   comes back, and get confirmation.
+1. **Bring-up.** Fetch the OpenAPI documents for the services the task calls,
+   run the scoped project and quest-list reads, show the merchant id,
+   `project_id`, `name` and `status`, and get confirmation before a write.
 2. **Draft.** Create the quest as `inactive` with the four required fields.
 3. **Fill in.** Add nodes and edges one at a time, asking for each missing
    required value. Show the assembled document before sending it.
@@ -83,7 +92,8 @@ project API key. Use it on the server or agent side only.
 
 ## Safety stops
 
-- Show the resolved scope before the first write, and get confirmation.
+- Read back and show the resolved scope before the first write, and get
+  confirmation. Ask before every non-GET call and show its exact body.
 - Before activation, show every externally observable action and get explicit
   confirmation for its impact. An `issue_reward` can create real payouts;
   `send_http_webhook` sends event data to an external URL;
@@ -111,13 +121,13 @@ error codes.
 
 | Status | What to tell the developer |
 |---|---|
-| 401, JSON body | The credential was not accepted for this project. Ask the developer to check `XSOLLA_MERCHANT_ID` and `XSOLLA_PROJECT_API_KEY`. |
-| 403 | The key lacks permission for quest configuration. |
-| 404, plain-text body such as `Cannot GET /...` or `Cannot POST /...` | The route is not published on this host yet. Stop and tell the developer that project API key access for this operation is not available yet. Do not retry and do not try other hosts. |
-| 404, JSON body | "Not found, or no access, or the project is not onboarded to Quest Platform." Never say the quest does not exist. |
-| 409 | Conflict. |
+| 401 | Credential missing or rejected. Read the body and never switch credentials automatically. |
+| 403 | The lane lacks capability or is not allowed on this route; do not retry. |
+| 404, plain text | Router miss. Do not report it as an auth or project answer. |
+| 404, JSON body | Project or quest is not visible with this credential; do not guess which cause applies. |
+| 409 | Conflict. Report it verbatim. |
 | 422 | Validation failed. Show `detail` verbatim. |
-| 5xx | Server error. Retry reads only. |
+| 5xx | Retry reads with backoff only. Never auto-retry a write. |
 
 A JSON 404 looks the same for an unknown project, a project that is not
 onboarded, and a project the key has no access to. This is deliberate, so the
