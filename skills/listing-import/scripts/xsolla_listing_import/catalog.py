@@ -175,6 +175,8 @@ def render_commands(operations, group=DEFAULT_GROUP):
         parts.append(arg("--groups", op["groups"]))
         if op["is_enabled"]:
             parts.append("  --is-enabled --is-show-in-store")
+        else:
+            parts.append("  --is-enabled=false --is-show-in-store=false")
         lines.extend(part + " \\" for part in parts[:-1])
         lines.append(parts[-1])
     return "\n".join(lines)

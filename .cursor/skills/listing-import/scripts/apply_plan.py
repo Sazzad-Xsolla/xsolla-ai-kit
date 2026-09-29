@@ -43,6 +43,10 @@ def _render(outcome, plan):
             print("  backup: %s" % ", ".join(sorted(outcome["backup"].values())))
     print("")
 
+    if outcome.get("halted"):
+        print("HALTED — %s" % outcome["halted"])
+        print("")
+
     if not outcome["confirmed"]:
         print("Commands, in order (%d):" % len(outcome["commands"]))
         for index, cmd in enumerate(outcome["commands"], start=1):

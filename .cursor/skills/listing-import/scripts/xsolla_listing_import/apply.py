@@ -288,11 +288,19 @@ def apply_plan(plan, slug, locale="en-US", confirmed=False, call=cli_call,
     temp = workdir or tempfile.mkdtemp(prefix="listing-import-assets-")
     created_temp = workdir is None
     try:
+        # Catalog first: a pack's buy button points at the SKU its item becomes,
+        # so the landing is only touched once every SKU is known to be ours.
+        for item in plan.get("catalog_operations") or []:
+            if _apply_catalog(item, confirmed, call, outcome) == HALT:
+                outcome["halted"] = (
+                    "SKU %r already exists in this project. Stopped before any "
+                    "landing write, so no buy button was linked to the old item. "
+                    "Pick a different SKU or remove the existing item, then re-run."
+                    % item["sku"])
+                return outcome
         for op in plan.get("operations") or []:
             _apply_one(op, slug, landing, locale, confirmed, call, fetch, temp,
                        outcome)
-        for item in plan.get("catalog_operations") or []:
-            _apply_catalog(item, confirmed, call, outcome)
     finally:
         if created_temp:
             shutil.rmtree(temp, ignore_errors=True)
@@ -422,8 +430,20 @@ def _write_and_verify(op, slug, args, expected, call, outcome):
                                   "reason": detail})
 
 
+HALT = "halt"
+
+
+def _sku_exists(result):
+    text = ((result.get("stderr") or "") + (result.get("stdout") or "")).lower()
+    return "422" in text and "sku" in text and "exist" in text
+
+
 def _apply_catalog(item, confirmed, call, outcome):
-    """Create one in-app item. The group is created once, by the caller's first item."""
+    """Create one in-app item. The group is created once, by the caller's first item.
+
+    Returns ``HALT`` when the SKU is already taken: the caller must stop rather
+    than link a buy button to an item this run did not create.
+    """
     group = (item.get("groups") or ["imported_listing"])[0]
     if not outcome.get("_group_done"):
         group_args = ["--external-id", group, "--order", "99", "--is-enabled",
@@ -439,8 +459,12 @@ def _apply_catalog(item, confirmed, call, outcome):
             "--groups", json.dumps(item["groups"])]
     if item.get("prices"):
         args += ["--prices", json.dumps(item["prices"])]
+    # Always explicit: the CLI creates items enabled unless told otherwise, so
+    # omitting the flags would put an unpriced item live.
     if item.get("is_enabled"):
         args += ["--is-enabled", "--is-show-in-store"]
+    else:
+        args += ["--is-enabled=false", "--is-show-in-store=false"]
     outcome["commands"].append(["catalog", "create-items"] + args)
     if not confirmed:
         return
@@ -448,6 +472,8 @@ def _apply_catalog(item, confirmed, call, outcome):
     if result["code"] != 0:
         outcome["failed"].append({"sku": item["sku"], "kind": "catalog",
                                   "reason": (result["stderr"] or "").strip()[:200]})
+        if _sku_exists(result):
+            return HALT
     else:
         outcome["performed"].append({"sku": item["sku"], "kind": "catalog",
                                      "verified": "created; not read back"})

@@ -124,8 +124,15 @@ class TestRenderedCommands(unittest.TestCase):
         # belongs to a different command.
         item = catalog.render_commands(ops).split("\n\n")[1]
         self.assertNotIn("--prices", item)
-        self.assertNotIn("--is-enabled", item)
-        self.assertNotIn("--is-show-in-store", item)
+        # The CLI enables by default, so a disabled item must say so.
+        self.assertIn("--is-enabled=false", item)
+        self.assertIn("--is-show-in-store=false", item)
+
+    def test_a_priced_item_renders_enabled_and_shown(self):
+        item = self._render("Gems").split("\n\n")[1]
+        self.assertIn("--is-enabled --is-show-in-store", item)
+        self.assertNotIn("--is-enabled=false", item)
+        self.assertNotIn("--is-show-in-store=false", item)
 
 
 if __name__ == "__main__":

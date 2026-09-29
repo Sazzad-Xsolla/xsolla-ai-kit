@@ -364,14 +364,38 @@ class TestCatalog(unittest.TestCase):
         self.assertLess(actions.index("catalog admin-create-group"),
                         actions.index("catalog create-items"))
 
-    def test_an_unpriced_item_is_created_without_enable_flags(self):
+    def test_an_unpriced_item_is_created_explicitly_disabled(self):
         cli = FakeCli()
         with tempfile.TemporaryDirectory() as d:
             applier.apply_plan(plan_with(catalog=[self._item(priced=False)]), "s",
                                confirmed=True, call=cli, backup_dir=d)
         args = [c for c in cli.calls if c[1] == "create-items"][0][2]
+        self.assertIn("--is-enabled=false", args)
+        self.assertIn("--is-show-in-store=false", args)
         self.assertNotIn("--is-enabled", args)
         self.assertNotIn("--prices", args)
+
+    def test_a_priced_item_is_created_enabled_and_shown(self):
+        cli = FakeCli()
+        with tempfile.TemporaryDirectory() as d:
+            applier.apply_plan(plan_with(catalog=[self._item(priced=True)]), "s",
+                               confirmed=True, call=cli, backup_dir=d)
+        args = [c for c in cli.calls if c[1] == "create-items"][0][2]
+        self.assertIn("--is-enabled", args)
+        self.assertIn("--is-show-in-store", args)
+        self.assertNotIn("--is-enabled=false", args)
+        self.assertNotIn("--is-show-in-store=false", args)
+
+    def test_sku_exists_halts_before_any_landing_write(self):
+        cli = FakeCli(answers={("catalog", "create-items"):
+                               fail("422 SKU already exists")})
+        patch = {"step": 1, "kind": "patch", "field": "edition.button",
+                 "block_id": "b", "path": ["x"], "value": "ios_gems"}
+        with tempfile.TemporaryDirectory() as d:
+            out = applier.apply_plan(plan_with(patch, catalog=[self._item()]), "s",
+                                     confirmed=True, call=cli, backup_dir=d)
+        self.assertIn("already exists", out["halted"])
+        self.assertNotIn("shopbuilder update-block", cli.actions())
 
     def test_a_failed_create_is_reported(self):
         cli = FakeCli(answers={("catalog", "create-items"): fail("409 exists")})
