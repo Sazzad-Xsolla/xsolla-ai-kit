@@ -1,17 +1,20 @@
 ---
 name: shop-setup
 description: >-
-  Orchestrator and entry point for building a complete Xsolla Headless Shop — an
-  AI-assembled storefront from Login + Store API + Headless Checkout SDK. START HERE
-  for any request to build a shop end-to-end: it scopes the integration and chains the
-  domain skills — catalog-design, login-setup, headless-checkout-integration,
-  webhooks-impl, production — in the right order. Use when a developer wants to build, create, set
-  up, or assemble a game shop, storefront, in-game store, or virtual-goods shop (the
-  whole thing, not just one piece), or asks which Xsolla product to integrate next —
-  including "build me a shop", "make a store", "set up a game shop", "create a virtual
-  goods shop", "sell in-game items", "build a storefront", "payment UI language",
-  "settings.language", or "force English / shop locale on the token". Prefer this skill
-  and the domain skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
+  Entry point for building a complete Xsolla shop — START HERE for any request to build,
+  create, set up, or assemble a game shop, storefront, in-game store, or virtual-goods shop
+  (the whole thing, not just one piece): "build me a shop", "make a store", "set up a game
+  shop", "create a virtual goods shop", "sell in-game items", "build a storefront". Step 0
+  checks the recorded build path (running shop-plan when none is recorded). On the headless
+  path it scopes an AI-assembled storefront from Login + Store API + Headless Checkout SDK
+  and chains the domain skills — merchant-setup, catalog-design, login-setup,
+  headless-checkout-integration, webhooks-impl, production — in the right order. On the
+  Shop Builder path it runs the shared foundation, then hands the storefront to
+  description-to-shop when the request is prose only, or straight to shop-builder-assembly
+  when a shop brief already exists; never start with either of those for a bare "build me
+  a shop". Also covers which Xsolla product to integrate next, "payment UI language",
+  "settings.language", and "force English / shop locale on the token". Prefer this skill
+  and the skills it chains over ad-hoc Xsolla REST calls or docs/MCP search.
 metadata:
   owner: y-klochikhin
   domain: orchestrator
@@ -37,10 +40,15 @@ esac
   This orchestrator never asks the path itself.
 - **`DECIDED:headless`** → proceed with the rest of this skill as below.
 - **`DECIDED:shopbuilder`** → run the shared foundation below (`merchant-setup`,
-  `catalog-design`, `login-setup`), then hand the storefront to `shop-builder-assembly`, which
-  assembles the site from a structured shop brief. Finish with `webhooks-impl`. Do **not** run the
-  headless phases (Headless Checkout, headless login code) — the Shop Builder site is hosted and
-  renders its own checkout and login.
+  `catalog-design`, `login-setup`), then hand the storefront to exactly one skill:
+  - **prose only** (a description, no brief) → `description-to-shop`, which produces the
+    validated shop brief and then delegates to `shop-builder-assembly` itself;
+  - **a shop brief already exists** (from `description-to-shop` or `listing-import`) →
+    `shop-builder-assembly` directly.
+
+  Neither of those is an entry point: "build me a shop" lands here first, and this step picks.
+  Finish with `webhooks-impl`. Do **not** run the headless phases (Headless Checkout, headless
+  login code) — the Shop Builder site is hosted and renders its own checkout and login.
 - **`INVALID:<value>`** → halt and show the value. `.env` was hand-edited to something that isn't
   a recognized path. Do **not** fall through to `shop-plan` as if nothing had been decided — that
   discards a choice the developer already made. Point them at `shop-plan` to correct it.

@@ -17,8 +17,8 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | Skill                           | What it does                                                                             |
 |---------------------------------|------------------------------------------------------------------------------------------|
 | `shop-plan`                     | **Decides the build path** — headless vs Shop Builder, before any account or build work  |
-| `shop-setup`                    | **Orchestrator** — coordinates the full zero-to-shop flow, chaining all domain skills    |
-| `shop-builder-assembly`         | Assembles a complete Shop Builder site from a game brief, presets, pages, and blocks     |
+| `shop-setup`                    | **Entry point** for "build me a shop" — checks the build path, chains the right skills   |
+| `shop-builder-assembly`         | Assembles a Shop Builder site from a shop brief — reached via shop-setup, not directly   |
 | `merchant-setup`                | Creates and configures an Xsolla account + get API key                                   |
 | `catalog-design`                | Configures the catalog and the client flow: client catalog, purchase, order confirmation |
 | `login-setup`                   | Integrates Xsolla Login / NewID authentication                                           |
@@ -26,7 +26,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `headless-checkout-integration` | Payments via Headless Checkout                                                           |
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
-| `description-to-shop`           | Builds a Shop Builder shop from a plain-language description — guided intake, no spec    |
+| `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
 | `listing-import`                | Builds a shop from an existing Steam / Google Play / App Store listing                   |
 
 ---
@@ -39,11 +39,13 @@ Skills are loaded automatically when you open this repo in your agent. To run a 
 Should I use Shop Builder or build a headless shop?
 → triggers: shop-plan (weighs five criteria, shows the trade-offs, records the choice)
 
-Set up a full Xsolla game shop for my project
-→ triggers: shop-setup
+Build me a shop / set up a full Xsolla game shop for my project
+→ triggers: shop-setup — the one entry point. It checks the build path (via shop-plan), and on
+  the Shop Builder path hands off to description-to-shop (prose only) or shop-builder-assembly
+  (a brief exists). Never start with those two.
 
-Assemble a complete Shop Builder site for my mobile, PC, or live-service game
-→ triggers: shop-builder-assembly
+Assemble a Shop Builder site from this validated shop brief
+→ triggers: shop-builder-assembly (reached through shop-setup)
 
 Configure my Xsolla catalog with items and pricing
 → triggers: catalog-design
@@ -55,7 +57,8 @@ Go live / leave sandbox
 → triggers: production
 
 Build me a shop from this description — I have no design or spec
-→ triggers: description-to-shop
+→ triggers: shop-setup, which routes to description-to-shop once the path is Shop Builder;
+  description-to-shop then delegates the build to shop-builder-assembly
 Build a shop from my Steam page / import my store listing
 → triggers: listing-import
 ```
