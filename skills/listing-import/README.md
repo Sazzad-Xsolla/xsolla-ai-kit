@@ -35,17 +35,17 @@ python3 listing_import.py validate --listing listing.json
 # 3. what it got, and what can land
 python3 listing_import.py coverage --listing listing.json
 
-# 4. the mapping the user approves
-python3 listing_import.py preview \
-    --listing listing.json --structure structure.json --localization localization.json
-
-# 5. the catalog commands for the in-app items
+# 4. rehearse, then create only the catalog. The confirmed step writes the
+# trusted result consumed by the assembly handoff.
 python3 listing_import.py catalog --listing listing.json
+python3 listing_import.py catalog --listing listing.json \
+    --merchant-id "$M" --project-id "$P" --yes --output catalog-result.json
 
-# 6. rehearse the write, then do it
-python3 listing_import.py plan --listing listing.json --structure structure.json > plan.json
-python3 apply_plan.py --plan plan.json --slug $SLUG          # prints, sends nothing
-python3 apply_plan.py --plan plan.json --slug $SLUG --yes    # writes, backs up first
+# 5. hand the generated catalog result and the user-approved site/style context
+# to shop-builder-assembly, which owns every site write.
+python3 listing_import.py handoff --listing listing.json \
+    --context listing-handoff.json --catalog-result catalog-result.json \
+    --output brief.json
 ```
 
 Google Play is fetched as HTML rather than JSON, and the App Store needs the page as well as
@@ -93,7 +93,7 @@ Exit status: `0` clean · `1` errors or blockers · `2` bad invocation.
 cd scripts && python3 -m unittest discover -s tests -t . -v
 ```
 
-328 tests, no network. Every fixture is real, not hand-written: the live `appdetails`
+Tests run offline. Every fixture is real, not hand-written: the live `appdetails`
 response for Steam app 812140, the live iTunes lookup for id 529479190, a trimmed excerpt of
 the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
 `import-listing` actually produced. A synthetic fixture would have agreed with whatever the

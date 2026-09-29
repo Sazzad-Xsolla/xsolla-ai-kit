@@ -1,23 +1,12 @@
 ---
 name: listing-import
 description: >-
-  Builds an Xsolla Shop Builder landing from a game's existing Steam, Google Play or Apple
-  App Store listing, so a publisher who already wrote that content does not re-enter it. Use
-  when asked to import a store listing, build a site from a store page, or reuse listing copy
-  and art — "make a site from my Steam page", "turn my Play Store listing into a webshop",
-  "import my store listing", "clone my store page", "build a shop from my App Store entry",
-  "reuse my game's screenshots and description". Extracts title, short and long description,
-  icon, key art, screenshots, genres, tags, platform, age rating and publicly listed in-app
-  items, ratings and player reviews, shows the extracted-to-shop mapping, and only then
-  writes via the CLI. Copies everything the listing publishes, not just marketing: genres,
-  tags, age rating and the review score ride the description, in-app items become priced
-  catalog entities, system requirements fill the requirements block, and chosen player
-  reviews go on bento-grid cards. Steam also has a
-  server-side import (`xsolla shopbuilder import-listing`); Google Play and the App Store are
-  rejected by that endpoint, so all three run through extraction here. Public pages only.
-  Landing mechanics belong to the CLI's own `shopbuilder` skill.
-  Always confirms the partner holds the rights to the copy and artwork before writing, and
-  never publishes.
+  Import a publisher-owned Steam, Google Play, or Apple App Store listing into an
+  Xsolla catalog, then build a normalized brief for shop-builder-assembly. Use when
+  asked to import a store listing or build a shop from one. Only colors, fonts, game
+  name, description, and catalog cross the handoff; never pass listing images, icons,
+  screenshots, or reviews. shop-builder-assembly owns all site writes and never
+  publishes.
 metadata:
   owner: n.budhwani
   domain: store
@@ -26,14 +15,16 @@ metadata:
 
 ## What this is
 
-A listing is content a publisher already wrote. This skill moves it into a Shop Builder
-landing without retyping it, and puts a confirmation step in front of the write.
+A listing is content a publisher already wrote. This skill extracts and validates it,
+creates the catalog, then hands a deliberately narrow brief to
+[`shop-builder-assembly`](../shop-builder-assembly/SKILL.md). That skill owns the site
+plan, confirmation, writes, verification, and preview.
 
-The work splits in two. **Extraction** turns a public page into a `listing.json`; three
-extractors do it, one per storefront. **Everything after that is deterministic** — validate
-the document, measure coverage, map fields onto blocks and catalog entities, emit the ordered
-plan. Keeping the seam there means an extraction bug and a mapping bug fail in different
-places with different messages.
+The three storefront extractors produce `listing.json`. Catalog creation remains here.
+The handoff transfers only colors, fonts, game name, plain-text description, and the
+successfully created catalog. Extracted images, icons, screenshots, and reviews may be
+reported for diagnostics, but they never enter the assembly brief. The legacy direct
+block mapper remains diagnostic only and is not the integrated write path.
 
 Nothing here fetches. Each extractor takes content the caller already has, so a rate limit, a
 redirect or a geo-block surfaces where it happened instead of inside a parser — and the tests
@@ -106,27 +97,27 @@ every Play run — a sudden gap there is a redesign, not a bad listing.
 
 ## The flow
 
-Never reorder steps 1–5. Never skip step 6.
-
-1. **Rights gate.** Ask: is this your own game's listing? A public store page can be parsed
-   by anyone — nothing upstream checks ownership — so this is the only check that the copy and
-   artwork are the partner's to reuse. A no ends the run.
-   **If you intend to carry player reviews over, ask a second time.** A review is a player's
-   words, not the publisher's, and republishing someone else's writing on a commercial page is
-   a different permission. That answer is `rights_reviews_confirmed`, and without it the
-   planner places no reviews and says so.
-2. **Extract.** `fetch` says what to request; `extract` turns it into `listing.json`
-   ([the schema](references/listing-json.md)). What was looked for and not found lands in
-   `not_found`, so an absent field is never ambiguous.
-3. **Back up.** `get-structure` and `get-localization` to files, kept. Before the first write,
-   not before the first fix.
-4. **Preview.** `preview` renders the mapping. This is what the user approves.
-5. **Confirm.** Explicit yes. An unconfirmed run stops here.
-6. **Write, then read back.** `apply_plan.py` does both. Every patch is read back, because
-   Shop Builder answers `ok: true` to a patch at a path that does not exist and changes
-   nothing — so an unread write is indistinguishable from a successful one.
-7. **Never publish.** A human publishes, in Publisher Account. The runner cannot: its
-   command allowlist has no publish, no delete and no `enable-preview`.
+1. **Rights gate.** Confirm this is the publisher's own listing. A no ends the run.
+2. **Extract and validate.** `fetch` identifies the request; `extract` creates
+   `listing.json`; `validate` and `coverage` report missing fields.
+3. **Create the catalog.** Show the catalog operations and get explicit confirmation.
+   Execute them with `listing_import.py catalog --yes --output catalog-result.json`.
+   The command writes the result itself only after every operation succeeds. If any
+   operation fails, stop. In particular,
+   HTTP 422 for an existing SKU is not success: report it and never bind a buy button
+   to the pre-existing SKU.
+4. **Record assembly context.** Write `listing-handoff.json` with only the target
+   project/site and approved color and font tokens. Never copy or hand-edit
+   `catalog_result`; the catalog command owns `catalog-result.json`.
+5. **Build the assembly brief.** Run
+   `listing_import.py handoff --catalog-result catalog-result.json`. It calls the
+   assembly-owned adapter, carries only colors, fonts, game name, plain-text description,
+   and catalog references and rejects media, reviews, unknown style fields, and incomplete
+   catalog results.
+6. **Delegate.** Invoke `shop-builder-assembly` with the validated brief. It backs up,
+   plans theme/pages/navigation/blocks/catalog links, asks for its own confirmation,
+   writes, reads back, verifies, and may enable preview. listing-import has no site writer.
+7. **Never publish.** A human publishes in Publisher Account.
 
 For Steam, step 2 also happens — even though the backend can import by itself. The parsing
 endpoint returns `{developer, icon, title}` and nothing else, three of eleven target fields,
@@ -135,8 +126,9 @@ the server's import can then be diffed against each other.
 
 ## Running it
 
-From `scripts/`. All read-only; `--json` gives the machine-readable report in
-[`README.md`](README.md). Exit status `0` clean, `1` something to fix, `2` bad invocation.
+From `scripts/`. Commands are read-only unless catalog creation includes `--yes`; `--json`
+gives the machine-readable report in [`README.md`](README.md). Exit status `0` clean, `1`
+something to fix, `2` bad invocation.
 
 | About to | Run |
 |---|---|
@@ -144,33 +136,25 @@ From `scripts/`. All read-only; `--json` gives the machine-readable report in
 | Turn a response into a listing | `python3 listing_import.py extract --input raw.json --url <store url>` |
 | Check the extraction | `python3 listing_import.py validate --listing listing.json` |
 | Report field coverage | `python3 listing_import.py coverage --listing listing.json` |
-| Show the mapping for approval | `python3 listing_import.py preview --listing listing.json --structure structure.json` |
-| Get the operations to execute | `python3 listing_import.py plan --listing listing.json --structure structure.json > plan.json` |
-| Rehearse the write | `python3 apply_plan.py --plan plan.json --slug <slug>` |
-| Actually write | `python3 apply_plan.py --plan plan.json --slug <slug> --yes` |
-| Create the in-app items | `python3 listing_import.py catalog --listing listing.json` |
+| Rehearse catalog creation | `python3 listing_import.py catalog --listing listing.json` |
+| Create catalog and its result | `python3 listing_import.py catalog --listing listing.json --merchant-id <M> --project-id <P> --yes --output catalog-result.json` |
+| Build the assembly brief | `python3 listing_import.py handoff --listing listing.json --context listing-handoff.json --catalog-result catalog-result.json --output brief.json` |
+| Inspect the legacy block mapping (diagnostic only) | `python3 listing_import.py preview --listing listing.json --structure structure.json` |
 | Extract Steam with its editions | `python3 listing_import.py extract --input raw.json --url <url> --dlc dlc.json` |
 | Convert pasted Steam BBCode | `python3 listing_import.py bbcode --file description.txt` |
 
 Pass `--localization` (from `get-localization`) to `preview`/`plan` as well; without it, `L:`
 reference existence is reported as unverified rather than assumed.
 
-The Steam happy path, and the order that matters:
+The legacy mapper can inspect an existing test site's export for diagnostics. It never
+writes the site:
 
 ```bash
-SLUG=<landing slug>
-xsolla shopbuilder create-website --name "<Name>" --slug $SLUG --type topup
-# import-listing on an EMPTY landing only. set-landing-type first creates a
-# structure, and the import then returns 200 and silently does nothing.
-xsolla shopbuilder import-listing --slug $SLUG --type sellingpage --target <store url>
 xsolla shopbuilder get-structure --slug $SLUG --json > structure_raw.json
 python3 -c 'import json;json.dump(json.load(open("structure_raw.json"))["data"],
     open("structure.json","w"))'
 python3 listing_import.py preview --listing listing.json --structure structure.json
 ```
-
-`--type` is the landing *template*, not the store name: `sellingpage`. `steam` and `gplay`
-are rejected by the live API.
 
 ## Reading the coverage report
 
@@ -267,12 +251,12 @@ create or update, and most mobile IAPs are consumables — filed, not worked aro
 ## Safety rules
 
 1. **Rights before anything.** Step 1 is not a warning to print; it is a gate that stops.
-2. **Back up before the first write.**
-3. **Show the plan, get explicit confirmation.** No silent writes.
+2. **Show catalog operations and get explicit confirmation.** No silent catalog writes.
+3. **Stop on every catalog failure.** HTTP 422 means conflict, not permission to reuse
+   an old SKU.
 4. **Use these scripts and the CLI's commands**, not ad-hoc API calls.
-5. **Never patch a remote image URL into a block.** `upload-asset` takes a local file: fetch,
-   upload, then write the returned CDN url. Writing the source URL hotlinks another
-   storefront from the partner's page.
+5. **Never pass store media or reviews to assembly.** Images, icons, screenshots, and
+   reviews are outside the handoff even when extraction finds them.
 6. **Never auto-enable an unpriced catalog item.** Created disabled, so a mis-parsed
    listing cannot put a broken item on sale.
 7. **Hide what you did not fill.** A block nothing was written to still holds the template's
@@ -296,6 +280,8 @@ Shop Builder authorizes separately from the Store `XSOLLA_PROJECT_API_KEY` that
 
 - [`catalog-design`](../catalog-design/SKILL.md) — regional pricing, groups and the
   reclassification the imported items need.
+- [`shop-builder-assembly`](../shop-builder-assembly/SKILL.md) — owns the site plan,
+  confirmation, Shop Builder writes, verification, and preview after catalog creation.
 - [`shop-setup`](../shop-setup/SKILL.md) — the headless storefront, which has no blocks and
   so is not an import target.
 
@@ -305,7 +291,10 @@ Shop Builder authorizes separately from the Store `XSOLLA_PROJECT_API_KEY` that
 every claim above, the three
 assumptions real data corrected, and the manual interventions.
 
-## Agent test
+## Historical mapper evaluation
+
+The evidence below predates the assembly handoff and validates extraction and the legacy
+diagnostic mapper. It is not evidence that listing-import should write a site directly.
 
 Prompt: "Build me an Xsolla shop from my Steam page:
 https://store.steampowered.com/app/812140/"

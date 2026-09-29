@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import shlex
+import tempfile
 import unittest
 
 from xsolla_listing_import import catalog
@@ -120,12 +122,93 @@ class TestRenderedCommands(unittest.TestCase):
 
     def test_an_unpriced_item_renders_without_the_prices_flag(self):
         ops, _w = catalog.build_operations([{"name": "Mystery"}], "steam")
-        # Only the item command; the group's own --is-enabled is correct and
-        # belongs to a different command.
         item = catalog.render_commands(ops).split("\n\n")[1]
         self.assertNotIn("--prices", item)
-        self.assertNotIn("--is-enabled", item)
-        self.assertNotIn("--is-show-in-store", item)
+        self.assertIn("--is-enabled=false", item)
+        self.assertIn("--is-show-in-store=false", item)
+
+
+class FakeCatalogCli:
+    def __init__(self, answers=None):
+        self.calls = []
+        self.answers = answers or {}
+
+    def __call__(self, action, args):
+        self.calls.append((action, list(args)))
+        answer = self.answers.get(action)
+        if isinstance(answer, list):
+            return answer.pop(0)
+        return answer or {"code": 0, "stdout": "{}", "stderr": ""}
+
+
+class TestCatalogExecution(unittest.TestCase):
+
+    def operations(self, count=1, priced=True):
+        items = []
+        for index in range(count):
+            item = {"name": "Pack %d" % index}
+            if priced:
+                item["price"] = {"amount": 1.99, "currency": "USD"}
+            items.append(item)
+        return catalog.build_operations(items, "steam")[0]
+
+    def test_rehearsal_calls_nothing(self):
+        cli = FakeCatalogCli()
+        outcome = catalog.apply_operations(self.operations(), 1, 2, call=cli)
+        self.assertEqual([], cli.calls)
+        self.assertEqual("planned", outcome["status"])
+        self.assertIsNone(outcome["catalog_result"])
+
+    def test_success_creates_group_then_items_and_builds_result(self):
+        cli = FakeCatalogCli()
+        outcome = catalog.apply_operations(
+            self.operations(2), 1, 2, confirmed=True, call=cli
+        )
+        self.assertEqual(["admin-create-group", "create-items", "create-items"],
+                         [call[0] for call in cli.calls])
+        self.assertEqual("created", outcome["catalog_result"]["status"])
+        self.assertEqual(2, len(outcome["catalog_result"]["created_skus"]))
+
+    def test_false_item_flags_are_explicit(self):
+        cli = FakeCatalogCli()
+        catalog.apply_operations(
+            self.operations(priced=False), 1, 2, confirmed=True, call=cli
+        )
+        args = [args for action, args in cli.calls if action == "create-items"][0]
+        self.assertIn("--is-enabled=false", args)
+        self.assertIn("--is-show-in-store=false", args)
+
+    def test_sku_422_stops_and_produces_no_result(self):
+        exists = {
+            "code": 1,
+            "stdout": "",
+            "stderr": '{"code":"http_422","message":"SKU already exists"}',
+        }
+        cli = FakeCatalogCli({
+            "create-items": [exists, {"code": 0, "stdout": "{}", "stderr": ""}]
+        })
+        outcome = catalog.apply_operations(
+            self.operations(2), 1, 2, confirmed=True, call=cli
+        )
+        self.assertEqual(1, [call[0] for call in cli.calls].count("create-items"))
+        self.assertEqual("failed", outcome["status"])
+        self.assertIsNone(outcome["catalog_result"])
+        self.assertIn("without reusing", outcome["failed"][0]["reason"])
+
+    def test_empty_catalog_has_a_trusted_empty_result(self):
+        outcome = catalog.apply_operations([], None, None, confirmed=True)
+        self.assertEqual({"status": "empty", "created_skus": []},
+                         outcome["catalog_result"])
+
+    def test_result_writer_replaces_the_target(self):
+        result = {"status": "created", "group_external_id": "g",
+                  "created_skus": ["one"]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "catalog-result.json")
+            catalog.write_result(path, result)
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual(result, json.load(handle))
+            self.assertFalse(os.path.exists(path + ".tmp"))
 
 
 if __name__ == "__main__":

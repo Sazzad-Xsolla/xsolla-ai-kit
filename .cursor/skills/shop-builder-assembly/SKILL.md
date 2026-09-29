@@ -24,6 +24,13 @@ Normalize publisher answers, existing stores, descriptions, and designs into the
 [shop brief](references/shop-brief.md). Writes require that brief; callers own source
 extraction.
 
+For `listing-import`, the catalog must be created before handoff. Build the brief with
+`scripts/build_listing_brief.py` from its validated `listing.json`, user-approved context,
+and the `catalog-result.json` written by listing-import. Never hand-fill that result. The
+boundary admits only colors, fonts, game name, plain-text description, and catalog
+references. It rejects images, icons, screenshots, and reviews. This skill owns every
+Shop Builder site write after handoff.
+
 If `preset` is `auto`, choose in this order:
 
 1. Live-service game with active events or rotating offers → `live-service-events`.
