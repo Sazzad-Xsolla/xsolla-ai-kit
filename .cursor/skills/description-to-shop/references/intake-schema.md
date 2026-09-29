@@ -73,7 +73,7 @@ structure. Collect groups first, items only as their contents.
 
 ### Translating a description into groups
 
-Every eval description but one names items and prices, never groups. So there is always a
+Almost every plain-language description names items and prices, never groups. So there is always a
 translation step, and it comes before the plan:
 
 1. Use the assembly skill's read-only catalog discovery to read real groups and types.

@@ -1,6 +1,6 @@
 # Exported block contracts
 
-These are sanitized structural observations from approved SB-8796 test-project
+These are sanitized structural observations from approved test-project
 exports: a UI-created `store` landing on September 10, 2026 and an unpublished,
 UI-created multi-page `topup` portal on September 11, 2026. No IDs, localized copy,
 account data, or asset URLs are retained. Regenerate a machine-readable summary with:
@@ -63,4 +63,4 @@ chain, and Social quests as `federated` wrappers whose effective identities are 
 
 Subscriptions is the only official inventory entry not observed in either the Add
 block palette or these exports. Do not guess its template or field paths; keep it
-blocked under [SB-8990](https://xsolla.atlassian.net/browse/SB-8990).
+blocked; the inventory reconciliation is still open.

@@ -301,9 +301,9 @@ Shop Builder authorizes separately from the Store `XSOLLA_PROJECT_API_KEY` that
 
 ## Evidence
 
-`evals/listing-import/EVAL-LOG.md`, in the toolkit repo, records the live runs behind
-every claim above, the three
-assumptions real data corrected, and the manual interventions.
+The unit tests are the evidence that ships: offline, on fixtures for a fictional title shaped
+like each store's real response. Extraction clears 80% on all three sources and mapping is
+100%, asserted in `tests/test_extract.py` rather than claimed here.
 
 ## Historical mapper evaluation
 

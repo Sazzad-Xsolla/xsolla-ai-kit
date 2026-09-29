@@ -50,8 +50,8 @@ before handing off.
 Invoke `shop-builder-assembly` with the validated brief. It exclusively owns preset
 selection and block defaults, the confirmation-bound plan, project allowlisting and
 login preflight, backup-before-write, every `xsolla shopbuilder` write, structural,
-localization, catalog, readiness and preview verification, the never-publish safeguard,
-and the evaluation record.
+localization, catalog, readiness and preview verification, and the never-publish
+safeguard.
 
 Do not request a separate approval here and do not run legacy local assembly scripts.
 One confirmation in `shop-builder-assembly` covers the exact plan applied.
@@ -67,4 +67,4 @@ return its exact blocker and backup location — do not retry or switch projects
   boundaries, completeness gate.
 - [references/plan-format.md](references/plan-format.md) — the handoff object and its
   rules.
-- `shop-builder-assembly/references/shop-brief.md` — authoritative contract (SB-8796).
+- `shop-builder-assembly/references/shop-brief.md` — authoritative contract.

@@ -35,10 +35,9 @@ from committed evidence.
   Fast Login, Promo slider, Call-to-action, Social media widgets, and Social quests.
   Empty Custom code remained hidden and the unconfigured Offer chain produced no live
   offer content, as expected. No publication action was taken.
-- The formal evaluation matrix completed 10 dedicated-project runs across all three
-  presets. Nine runs passed exact post-state verification and fresh authenticated
-  Chrome previews; the preserved first run failed the CLI readiness/preview criteria.
-  The resulting success rate is 90%, with no run above two manual interventions.
+- Ten dedicated-project runs across all three presets: nine passed exact post-state
+  verification and fresh authenticated Chrome previews; the preserved first run failed
+  the CLI readiness/preview criteria. No run needed more than two manual interventions.
 - Final exports verified the mobile single-page layout and the PC/live-service
   three-page layouts, their internal navigation, requested locale, catalog sections,
   and unpublished status. The main demonstration shop was independently exported and
@@ -53,15 +52,12 @@ from committed evidence.
    valid `xsolla auth login` token can stop yielding a cookie after one or more
    commands, and repeated supported logins eventually caused HTTP 429. The CLI needs
    a secure cached Shop Builder session or another non-manual multi-command flow.
-   Tracked in [SB-8960](https://xsolla.atlassian.net/browse/SB-8960).
+   Still open.
 2. `verify-website --slug ...` returned HTTP 400 because the generated request omitted
-   required `draftPagesIds` (request ID `6ac16aca0642a5f39b62dfb9045c4d77`).
-   Tracked in [SB-8961](https://xsolla.atlassian.net/browse/SB-8961).
+   required `draftPagesIds`. Still open.
 3. `enable-preview` and `preview-link` returned `admin_privileges_requred` for a
    Publisher Account project owner, while the same user could open Preview in the
-   Publisher Account editor. Request IDs: `a361329b109800eaed7a48856185fe7b`
-   and `146f3c9438cacf66102e1031434f5033`. Tracked in
-   [SB-8962](https://xsolla.atlassian.net/browse/SB-8962).
+   Publisher Account editor. Still open.
 
 Do not work around these gaps by copying `pa-v4-token` from browser storage. Continue
-to use `xsolla auth login` and link the CLI tickets to SB-8796.
+to use `xsolla auth login`; the CLI gaps above are filed and still open.

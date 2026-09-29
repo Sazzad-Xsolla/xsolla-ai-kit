@@ -88,8 +88,7 @@ After confirmation, apply the plan in this dependency order:
    enabling its `L:` ID.
 
 Use pre-written scripts for repeated work; never invent HTTP or `curl` workarounds.
-If the CLI lacks an operation, stop it, record the gap, and link a CLI/API ticket to
-SB-8796.
+If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticket.
 
 ## Verification and handoff
 
@@ -101,8 +100,6 @@ SB-8796.
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
 - Enable preview only if the confirmed plan includes it, then return the preview link.
 - Report skips, interventions, and gaps; state that the site is **not published**.
-- For an epic evaluation run, record the outcome using
-  [references/evaluation.md](references/evaluation.md); do not omit failed attempts.
 
 ## Stop conditions
 

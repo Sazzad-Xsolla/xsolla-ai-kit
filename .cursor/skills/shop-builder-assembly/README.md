@@ -55,9 +55,6 @@ from a normalized JSON shop brief.
      --plan ./artifacts/confirmed-plan.json \
      --structure ./artifacts/post-apply/structure.json
    ```
-6. For formal runs, append the result using `references/evaluation.md` and check the
-   metrics with `scripts/summarize_evals.py`.
-
 To sanitize a UI-created export without retaining IDs, copy, account data, or URLs,
 run `scripts/extract_block_contracts.py --output ...` and reconcile it with the block
 catalog. Federated wrappers use their effective `values.blockId` module.

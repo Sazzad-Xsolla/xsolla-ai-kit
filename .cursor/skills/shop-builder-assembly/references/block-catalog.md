@@ -19,7 +19,7 @@ Coverage: **24/24 official entries documented (100%)**. Mapping coverage is **23
 Subscriptions remains a gap. Catalog and preset recommendations still require the
 designated reviewer to approve them.
 
-Tracked inventory reconciliation: [SB-8990](https://xsolla.atlassian.net/browse/SB-8990).
+Inventory reconciliation is still open.
 
 ## Official inventory mapping
 
@@ -73,8 +73,7 @@ The current exports explain the older CLI names: the multi-page `topup` template
 `lead`, and externally delivered blocks use `federated` with their effective module in
 `values.blockId`. The `store` landing still uses `leadGameSales`. Treat these as
 landing/runtime distinctions, not interchangeable aliases. Remaining CLI discovery
-and versioning issues are tracked in
-[SB-8991](https://xsolla.atlassian.net/browse/SB-8991).
+and versioning issues are still open.
 
 ## Safe use rule
 

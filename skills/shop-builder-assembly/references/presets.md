@@ -1,7 +1,7 @@
 # Shop Builder presets
 
-These are implementation drafts pending approval from the designated reviewer,
-Andrey Pyanzin. Treat them as defaults, not permission to overwrite explicit
+These are implementation drafts pending approval from the designated Shop Builder
+reviewer. Treat them as defaults, not permission to overwrite explicit
 publisher choices.
 
 ## Mobile single page
@@ -53,6 +53,6 @@ unit. Do not invent event dates, discounts, scarcity, or eligibility.
 
 | Preset | Reviewer | Date | Status |
 |---|---|---|---|
-| Mobile single page | Andrey Pyanzin | TBD | Draft; review pending |
-| PC multi-page shop | Andrey Pyanzin | TBD | Draft; review pending |
-| Live service with bundles and events | Andrey Pyanzin | TBD | Draft; review pending |
+| Mobile single page | designated reviewer | TBD | Draft; review pending |
+| PC multi-page shop | designated reviewer | TBD | Draft; review pending |
+| Live service with bundles and events | designated reviewer | TBD | Draft; review pending |
