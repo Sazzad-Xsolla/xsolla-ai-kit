@@ -3,11 +3,14 @@ name: shop-builder-assembly
 description: >-
   Assemble a complete Xsolla Shop Builder storefront from a structured shop brief,
   working top-down from theme and pages through navigation, standard blocks,
-  localization, and catalog links. Use for AI-built Shop Builder sites, full website
-  or webshop assembly, game-type storefront presets, mobile single-page shops, PC
-  multi-page shops, and live-service stores with bundles or events. Prefer this
-  skill over creating isolated Shop Builder blocks. Do not use it for a custom
-  headless storefront; use shop-setup for that architecture.
+  localization, and catalog links. Not the entry point for "build me a shop" — that is
+  shop-setup, which routes here once the build path is Shop Builder and a validated
+  brief exists (from description-to-shop for prose, or listing-import for a store
+  listing). Use for AI-built Shop Builder sites, full website or webshop assembly,
+  game-type storefront presets, mobile single-page shops, PC multi-page shops, and
+  live-service stores with bundles or events. Prefer this skill over creating isolated
+  Shop Builder blocks. Do not use it for a custom headless storefront; use shop-setup
+  for that architecture.
 metadata:
   owner: k.shah
   domain: store
@@ -88,8 +91,7 @@ After confirmation, apply the plan in this dependency order:
    enabling its `L:` ID.
 
 Use pre-written scripts for repeated work; never invent HTTP or `curl` workarounds.
-If the CLI lacks an operation, stop it, record the gap, and link a CLI/API ticket to
-SB-8796.
+If the CLI lacks an operation, stop it, record the gap, and file a CLI/API ticket.
 
 ## Verification and handoff
 
@@ -101,8 +103,6 @@ SB-8796.
 - Run `xsolla shopbuilder verify-website --slug <slug>`.
 - Enable preview only if the confirmed plan includes it, then return the preview link.
 - Report skips, interventions, and gaps; state that the site is **not published**.
-- For an epic evaluation run, record the outcome using
-  [references/evaluation.md](references/evaluation.md); do not omit failed attempts.
 
 ## Stop conditions
 

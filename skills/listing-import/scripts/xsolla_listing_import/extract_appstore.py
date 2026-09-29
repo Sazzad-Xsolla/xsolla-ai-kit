@@ -4,7 +4,7 @@ Input is the JSON body of ``https://itunes.apple.com/lookup?id=<id>&country=<cc>
 -- already fetched.
 
 The thing to know before relying on this: **Apple's lookup API does not expose
-in-app purchases at all.**  Verified on 2026-09-14 against id 529479190 --- no
+in-app purchases at all.**  Verified on 2026-09-14 against a live listing --- no
 key in the response contains "purchase", "iap" or "inApp".  Every other target
 field is there.  The IAP list is rendered on the *web page* only, and truncated
 to roughly ten entries with a "Learn More" link, so it is passed in separately
@@ -85,7 +85,7 @@ def candidate_reviews(feed):
 
     Fifty entries, and the first is the app itself rather than a review, so it
     is skipped.  Returned as candidates, not choices: the first results for one
-    title include "Garbage" at five stars and "Satan's game" at one, and the
+    title included a scathing review at five stars and praise at one, and the
     rating does not predict the sentiment, so nothing here can filter them.
     """
     entries = ((feed or {}).get("feed") or {}).get("entry") or []

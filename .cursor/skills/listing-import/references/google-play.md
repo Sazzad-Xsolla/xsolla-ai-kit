@@ -3,18 +3,18 @@
 ## What was observed
 
 Both storefronts are rejected by the Shop Builder parsing endpoint. Verified live on
-2026-09-14, merchant `936601`, project `314771`, sitebuilder API `v2.25.0`:
+2026-09-14 against a test project, sitebuilder API `v2.25.0`:
 
 ```
-GET https://sitebuilder.xsolla.com/api/merchant/936601/project/314771
+GET https://sitebuilder.xsolla.com/api/merchant/<merchant_id>/project/<project_id>
       /landing/<slug>/parsing?type=sellingpage&target=<url>
 ```
 
 | Target | Result |
 |---|---|
-| `https://store.steampowered.com/app/812140/` | `200` with `{developer, icon, title}` |
-| `https://play.google.com/store/apps/details?id=com.supercell.clashofclans` | `400` |
-| `https://apps.apple.com/us/app/clash-of-clans/id529479190` | `400` |
+| `https://store.steampowered.com/app/<appid>/` | `200` with `{developer, icon, title}` |
+| `https://play.google.com/store/apps/details?id=<package>` | `400` |
+| `https://apps.apple.com/us/app/<slug>/id<digits>` | `400` |
 
 Both failures return the *same* generic body:
 
@@ -23,8 +23,7 @@ Both failures return the *same* generic body:
            "description": "Occurred error with body validation; Make sure that you enter the right parameters;"}}
 ```
 
-Request ids, for the ticket: Play `b3e6d474f94f3852ad7d190b6a1139be`, App Store
-`c74564c9b7b935dab0aec1d058e0c118`.
+The request ids for both responses were recorded with the internal ticket.
 
 ## Why that matters more than "Play is broken"
 
@@ -35,8 +34,7 @@ host allowlist on the server side. So this is one question, not two bug reports:
 > Which target hosts does `/parsing` accept, and what is the plan for Google Play and the
 > Apple App Store?
 
-File that against Shop Builder with the endpoint, the API version and the two request ids
-above. Per the scope guard, gaps in the SB API are filed and linked, **not** patched from
+File that against Shop Builder with the endpoint, the API version and the request ids. Per the scope guard, gaps in the SB API are filed and linked, **not** patched from
 this side. Do not add a client-side fetch to work around it.
 
 ## Play does not need a browser
@@ -44,7 +42,7 @@ this side. Do not add a client-side fetch to work around it.
 Worth stating plainly, because the opposite conclusion is the intuitive one. Play's page is
 React-rendered and a plain `WebFetch` returns nothing usable, which suggests a headless
 browser. It does not: a plain request with a browser User-Agent returns **1.3 MB of HTML with
-every target field already in it.** Verified 2026-09-14 for `com.supercell.clashofclans`.
+every target field already in it.** Verified 2026-09-14 against a live listing.
 
 | Field | Where in the HTML |
 |---|---|
@@ -59,12 +57,11 @@ every target field already in it.** Verified 2026-09-14 for `com.supercell.clash
 | `reviews` | the JSON-LD `aggregateRating` — **not** the visible text |
 
 That last row is the one to be careful about. A Play page carries a rail of
-similar apps: the real page for `com.supercell.clashofclans` has **two**
-`>N reviews<` strings (348K and 328K) and **seventeen** `aria-label` ratings.
-Reading the first match gives the named app's numbers by position rather than by
-identity — right by luck, and a DOM reorder reports a neighbour's instead. The
-`aggregateRating` block belongs to the app the URL names, occurs once, and
-carries the exact count (`347851`, not `348K`).
+similar apps: one live page had **two** `>N reviews<` strings and **seventeen**
+`aria-label` ratings. Reading the first match gives the named app's numbers by
+position rather than by identity — right by luck, and a DOM reorder reports a
+neighbour's instead. The `aggregateRating` block belongs to the app the URL names,
+occurs once, and carries the exact count rather than the abbreviated one.
 
 `extract_play.py` does this, and fails **field by field** on purpose: a renamed class costs
 one field, declared in `not_found`, rather than raising and losing the other ten. It is the
@@ -72,7 +69,7 @@ one extractor reading markup instead of a JSON contract, so it is the one that w
 
 Two things Play genuinely does not publish:
 
-- **Named in-app items.** Only a range — `$0.29 – $239.99` for Clash of Clans. A range is not
+- **Named in-app items.** Only a range — `$0.99 – $99.99` on the fixture page. A range is not
   an item list, so the range is carried in `notes` and nothing is created from it.
 - **The feature graphic.** No image on the page has its documented 1024x500 shape; Play
   appears to have stopped rendering it. `key_art` availability was corrected from ALWAYS to

@@ -10,7 +10,7 @@ from .fixtures.load import steam_listing, steam_structure
 
 
 class TestAgainstTheRealImportedLanding(unittest.TestCase):
-    """The structure here is one `import-listing` actually produced."""
+    """The structure here is shaped like the one `import-listing` produces."""
 
     def setUp(self):
         self.plan, self.blockers = plan.build(steam_listing(), steam_structure())

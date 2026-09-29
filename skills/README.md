@@ -4,21 +4,20 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 
 ## Status
 
-| Skill                                                                     | Domain                                | Owner               | Status |
-|---------------------------------------------------------------------------|---------------------------------------|---------------------|--------|
-| [`shop-plan`](shop-plan/SKILL.md)                                         | Orchestrator — build-path decision    | @s.sadruddin        | Draft  |
-| [`shop-setup`](shop-setup/SKILL.md)                                       | Orchestrator — full zero-to-shop flow | @y.klochikhin       | Done   |
-| [`shop-builder-assembly`](shop-builder-assembly/SKILL.md)                 | Shop Builder site assembly            | @k.shah              | Draft  |
-| [`merchant-setup`](merchant-setup/SKILL.md)                               | Merchant and Project setup            | @y.klochikhin       | Done   |
-| [`catalog-design`](catalog-design/SKILL.md)                               | Items, purchase & order tracking      | @p.sanachev         | Draft  |
-| [`login-setup`](login-setup/SKILL.md)                                     | Login / NewID / auth                  | @mohammed_abujalala | Draft  |
-| [`login-styling`](login-styling/SKILL.md)                                 | Login UI theming / branding           | @a.springut         | Draft  |
-| [`headless-checkout-integration`](headless-checkout-integration/SKILL.md) | Payments via Headless Checkout        | @y.klochikhin       | Done   |
-| [`webhooks-impl`](webhooks-impl/SKILL.md)                                 | Webhook handler generation            | @e.chernykh         | Done   |
-| [`production`](production/SKILL.md)                                       | Sandbox → live / go-live checklist    | @y.klochikhin       | Done   |
-| [`description-to-shop`](description-to-shop/SKILL.md)                     | Description → built Shop Builder shop | @k.shah             | WIP    |
-| [`shop-validation`](shop-validation/SKILL.md)                             | `validate-shop` gate for block shops  | @n.budhwani         | Done   |
-| [`listing-import`](listing-import/SKILL.md)                               | Steam / Play / App Store listing → shop | @n.budhwani       | Draft  |
+| Skill                                                                     | Domain                                  | Owner               | Status |
+|---------------------------------------------------------------------------|-----------------------------------------|---------------------|--------|
+| [`shop-setup`](shop-setup/SKILL.md)                                       | Entry point — build path, then the flow | @y.klochikhin       | Done   |
+| [`shop-plan`](shop-plan/SKILL.md)                                         | Orchestrator — build-path decision      | @s.sadruddin        | Draft  |
+| [`shop-builder-assembly`](shop-builder-assembly/SKILL.md)                 | Shop Builder site assembly              | @k.shah             | Draft  |
+| [`description-to-shop`](description-to-shop/SKILL.md)                     | Description → Shop Builder shop brief   | @k.shah             | Draft  |
+| [`listing-import`](listing-import/SKILL.md)                               | Steam / Play / App Store listing → shop | @n.budhwani         | Draft  |
+| [`merchant-setup`](merchant-setup/SKILL.md)                               | Merchant and Project setup              | @y.klochikhin       | Done   |
+| [`catalog-design`](catalog-design/SKILL.md)                               | Items, purchase & order tracking        | @p.sanachev         | Draft  |
+| [`login-setup`](login-setup/SKILL.md)                                     | Login / NewID / auth                    | @mohammed_abujalala | Draft  |
+| [`login-styling`](login-styling/SKILL.md)                                 | Login UI theming / branding             | @a.springut         | Draft  |
+| [`headless-checkout-integration`](headless-checkout-integration/SKILL.md) | Payments via Headless Checkout          | @y.klochikhin       | Done   |
+| [`webhooks-impl`](webhooks-impl/SKILL.md)                                 | Webhook handler generation              | @e.chernykh         | Done   |
+| [`production`](production/SKILL.md)                                       | Sandbox → live / go-live checklist      | @y.klochikhin       | Done   |
 
 ## Adding a skill
 

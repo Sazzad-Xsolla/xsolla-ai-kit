@@ -9,14 +9,14 @@ document caught here is a much cheaper failure than a half-written landing.
 ```json
 {
   "source": "steam",
-  "source_url": "https://store.steampowered.com/app/812140/",
+  "source_url": "https://store.steampowered.com/app/999999999/",
   "fetched_at": "2026-09-14T13:32:16Z",
   "rights_confirmed": true,
   "fields": {
-    "title": "Assassin's Creed® Odyssey",
-    "developer": "Ubisoft Quebec, Ubisoft Montreal",
-    "short_description": "In this action-adventure game, set sail for Ancient Greece…",
-    "long_description_html": "<h2 class=\"bb_tag\">FIGHT AS A SPARTAN</h2>…",
+    "title": "Example Game®",
+    "developer": "Example Studio, Example Studio Mobile",
+    "short_description": "Sail the Aether Isles in this action-adventure game…",
+    "long_description_html": "<h2 class=\"bb_tag\">BECOME A WARDEN</h2>…",
     "icon": "https://…/capsule_231x87.jpg",
     "key_art": "https://…/header.jpg",
     "screenshots": ["https://…/ss_0ef33c0f.1920x1080.jpg", "…"],
@@ -53,8 +53,8 @@ that is not authorized, which is a different failure from a malformed one and de
 different message.
 
 This flag is the **only** ownership check in the system. The Shop Builder parsing endpoint
-will read any public store page — verified on 2026-09-14 against a Ubisoft listing from an
-unrelated merchant account — so nothing upstream will stop a partner importing someone
+will read any public store page — verified on 2026-09-14 against a listing from an
+unrelated publisher — so nothing upstream will stop a partner importing someone
 else's game. Set it from a real answer to a real question, never by default.
 
 ## The long description, and its three forms
@@ -71,7 +71,7 @@ Setting two is an error; the scripts would otherwise silently pick one by declar
 
 Steam's `about_the_game` is **already HTML** — `<h2 class="bb_tag">`, `<span
 class="bb_img_ctn">`, `<video><source>` for inline trailers. The initial plan assumed BBCode
-and was wrong; see `evals/listing-import/EVAL-LOG.md` in the toolkit repo.
+and was wrong.
 
 ## `not_found`
 
@@ -88,8 +88,8 @@ Reviews you have **chosen and quoted**, not a feed:
 "rights_reviews_confirmed": true,
 "fields": {
   "user_reviews": [
-    {"quote": "It's not button mashing, it's an aggressive tactical input strategy.",
-     "attribution": "TGGTO07 on the App Store",
+    {"quote": "Every island feels hand-placed, and the skyship fights never get old.",
+     "attribution": "A player on the App Store",
      "rating": 5, "source": "app_store"},
     {"quote": "Easy to pick up, genuinely hard to master.",
      "attribution": "A player with 445 hours on Steam",

@@ -3,8 +3,6 @@
 Turns a plain-language game description into a validated Shop Builder assembly brief.
 `shop-builder-assembly` performs the plan, backup, CLI writes, verification and preview.
 
-Tracking: **SB-8786**. Depends on **SB-8796 / PR #32**, which must merge first.
-
 ## Prerequisites
 
 - `shop-builder-assembly` installed from Xsolla AI Kit
@@ -35,5 +33,4 @@ SKILL.md                            intake and handoff workflow
 README.md                           this file
 references/intake-schema.md         facts to collect, completeness gate
 references/plan-format.md           normalized handoff example
-../../evals/description-to-shop/    test inputs, run log, how to run
 ```

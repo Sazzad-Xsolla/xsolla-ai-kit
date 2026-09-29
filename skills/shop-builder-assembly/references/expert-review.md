@@ -1,8 +1,8 @@
 # Shop Builder expert review checklist
 
-Use this checklist in a 30-minute review with the designated reviewer. Andrey Pyanzin
-confirmed that he will review and approve the catalog and presets for SB-8796. Record
-the review in the PR or linked Jira issue; do not mark draft evidence as approval.
+Use this checklist in a 30-minute review with the designated Shop Builder reviewer, who
+has agreed to review and approve the catalog and presets. Record the review in the PR;
+do not mark draft evidence as approval.
 
 ## Block catalog
 
@@ -23,12 +23,12 @@ Review each preset independently:
 
 | Preset | Questions | Reviewer | Date | Decision / evidence |
 |---|---|---|---|---|
-| `mobile-single-page` | Is the page/block order a sound mobile default? Is `newStore` the right store block? | Andrey Pyanzin | TBD | Pending |
-| `pc-multi-page` | Are Home, Store, and About the right default pages? Are requirements placed correctly? | Andrey Pyanzin | TBD | Pending |
-| `live-service-events` | Are Store and Events sufficiently separated? Are bundle/event defaults safe and reusable? | Andrey Pyanzin | TBD | Pending |
+| `mobile-single-page` | Is the page/block order a sound mobile default? Is `newStore` the right store block? | designated reviewer | TBD | Pending |
+| `pc-multi-page` | Are Home, Store, and About the right default pages? Are requirements placed correctly? | designated reviewer | TBD | Pending |
+| `live-service-events` | Are Store and Events sufficiently separated? Are bundle/event defaults safe and reusable? | designated reviewer | TBD | Pending |
 
 For an approval, capture the reviewer's name, team, date, decision, and a durable link
-to the PR comment, meeting notes, or Jira comment. Convert requested changes into the
+to the PR comment or meeting notes. Convert requested changes into the
 preset or catalog before recording approval.
 
 ## Assembly behavior

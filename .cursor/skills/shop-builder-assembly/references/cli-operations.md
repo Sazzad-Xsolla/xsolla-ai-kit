@@ -66,12 +66,12 @@ landing-template-dependent and that `federated` is a runtime wrapper whose effec
 module is `values.blockId`. Preserve that wrapper and patch only exported leaf paths.
 Track remaining discrepancies as linked gaps rather than guessing aliases.
 
-- Inventory/UI reconciliation: [SB-8990](https://xsolla.atlassian.net/browse/SB-8990)
-- CLI module and contract discovery: [SB-8991](https://xsolla.atlassian.net/browse/SB-8991)
+- Inventory/UI reconciliation: still open
+- CLI module and contract discovery: still open
 
 The first dedicated-project run also found defects in Publisher-session reuse,
 `verify-website`, and CLI preview authorization. See
-[`test-findings.md`](test-findings.md) for reproducible evidence and request IDs.
+[`test-findings.md`](test-findings.md) for reproducible evidence.
 
 The CLI does not expose page deletion. If an existing target contains paths outside
 the confirmed plan, stop before writes and report the extra paths instead of leaving

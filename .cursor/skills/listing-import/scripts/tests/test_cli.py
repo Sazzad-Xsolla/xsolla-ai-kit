@@ -171,17 +171,17 @@ if __name__ == "__main__":
 
 class TestFetchExtractCatalogCommands(CliCase):
 
-    STEAM_URL = "https://store.steampowered.com/app/812140/"
+    STEAM_URL = "https://store.steampowered.com/app/999999999/"
 
     def test_fetch_names_the_api_url(self):
         status, out = self.run_cli(["fetch", "--url", self.STEAM_URL])
         self.assertEqual(status, CLEAN)
-        self.assertIn("appids=812140", out)
+        self.assertIn("appids=999999999", out)
 
     def test_fetch_warns_that_apple_needs_the_page_too(self):
         _status, out = self.run_cli([
             "fetch", "--url",
-            "https://apps.apple.com/us/app/clash-of-clans/id529479190"])
+            "https://apps.apple.com/us/app/example-game/id987654321"])
         self.assertIn("does not publish one", out)
 
     def test_fetch_on_an_unsupported_host_exits_two(self):

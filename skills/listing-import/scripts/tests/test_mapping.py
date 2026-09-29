@@ -64,7 +64,7 @@ class TestSourceUrlAgreement(unittest.TestCase):
 
     def test_steam_host(self):
         self.assertTrue(mapping.source_matches_url(
-            "steam", "https://store.steampowered.com/app/812140/"))
+            "steam", "https://store.steampowered.com/app/999999999/"))
 
     def test_play_host(self):
         self.assertTrue(mapping.source_matches_url(

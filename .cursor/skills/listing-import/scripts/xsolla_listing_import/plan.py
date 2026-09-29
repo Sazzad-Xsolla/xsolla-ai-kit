@@ -2,8 +2,8 @@
 
 The Definition of Done asks that the extracted-to-shop mapping be shown before
 writing.  For the Steam path that cannot come from the API: the parsing
-endpoint returns ``{developer, icon, title}`` and nothing else (verified live,
-merchant 936601, 2026-09-14), so three of eleven target fields are previewable
+endpoint returns ``{developer, icon, title}`` and nothing else (verified live
+against a test project, 2026-09-14), so three of eleven target fields are previewable
 server-side.  This module builds the rest of the preview from the agent's own
 extraction, which is why the extraction step is required even on the one source
 where the backend can do the import itself.

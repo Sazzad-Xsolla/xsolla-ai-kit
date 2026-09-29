@@ -3,7 +3,7 @@
 This module exists because of a wrong assumption, and the correction is worth
 recording rather than quietly fixing: the plan for Steam was BBCode conversion,
 on the strength of BBCode being what a developer types into Steam's backend.
-Checked against the live listing for app 812140 on 2026-09-14, Steam does not
+Checked against a live listing on 2026-09-14, Steam does not
 serve that.  ``about_the_game`` comes back as HTML that Steam has already
 rendered -- ``<h2 class="bb_tag">``, ``<span class="bb_img_ctn">``, and
 ``<video><source src=...>`` for inline trailers.  So the Steam path needs
@@ -45,8 +45,8 @@ CUT = {"video", "source", "script", "style", "iframe", "object", "embed",
 # Every HTML void element, not just the two in the keep list.  A void element
 # in CUT must not open a cut region: ``<source>`` and ``<img>`` never send a
 # close tag, so treating them as containers left the parser cutting to the end
-# of the document.  Found against the real app-812140 description, which came
-# out 284 characters long instead of 2,635.
+# of the document.  Found against a real store description, which came out
+# 284 characters long instead of 2,635.
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link",
         "meta", "param", "source", "track", "wbr"}
 SAFE_SCHEMES = ("http://", "https://", "mailto:")

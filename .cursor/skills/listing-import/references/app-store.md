@@ -38,19 +38,19 @@ breaks, and declaring it as HTML would pass it through the sanitiser unescaped, 
 The lookup API has no review text. A public RSS feed does:
 
 ```
-https://itunes.apple.com/us/rss/customerreviews/id=1491520571/sortBy=mostRecent/json
+https://itunes.apple.com/us/rss/customerreviews/id=<id>/sortBy=mostRecent/json
 ```
 
 Fifty entries. Each has `title`, `content.label` (the body), `im:rating`, `author.name` and
 `im:voteSum`. **The first entry is the app itself, not a review** — skipped.
 
-Do not trust the rating to sort them. Real first results for one title:
+Do not trust the rating to sort them. The first results for one title, paraphrased:
 
 | Rating | Title | Body opens |
 |---|---|---|
-| **5** | `Garbage` | "Honestly hate the game to death worse game of all time" |
-| **5** | `brawlhalla is hell.` | "Not metaphorical hell…" — sarcastic praise |
-| 1 | `Satan's game` | |
+| **5** | a one-word insult | a paragraph of pure dislike |
+| **5** | "this game is hell" | sarcastic praise |
+| 1 | a compliment | |
 
 A five-star rating with a one-star review under it is common, and praise written as abuse is
 too. So nothing can be filtered on the score: the choice has to be read, which is why

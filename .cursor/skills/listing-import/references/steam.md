@@ -7,6 +7,10 @@ import leaves unset.
 
 ## Historical server-side import trap
 
+Check the installed CLI has the command first — `xsolla shopbuilder import-listing --help`
+(and `get-listing --help`). A failure means the CLI predates them: stop and ask the user to
+update it rather than reaching for the API directly.
+
 The server-side `import-listing` command only creates a structure; it will not replace one.
 On a landing that
 already has a structure it returns `200` and changes nothing, with no error. `set-landing-type`
@@ -26,7 +30,7 @@ around that limitation; shop-builder-assembly owns the supported test-project si
 
 ## What the import produces
 
-Observed on the real landing `steamtest-173641` (merchant 936601): one page, 13 blocks.
+Observed on a test landing: one page, 13 blocks.
 
 ```
 header · leadGameSales · description · packs · packs · description ·
@@ -43,9 +47,9 @@ somewhere approximate. Add the block first if the partner wants those fields.
 Three fields. Verified live, 2026-09-14:
 
 ```json
-{"developer": "Ubisoft Quebec, Ubisoft Montreal, …",
- "icon": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/812140/header.jpg",
- "title": "Assassin's Creed® Odyssey"}
+{"developer": "Example Studio, Example Studio Mobile",
+ "icon": "https://cdn.example.com/steam/apps/999999999/header.jpg",
+ "title": "Example Game®"}
 ```
 
 The CLI's own help says `Response: (no body)`, which is wrong — worth a one-line docs PR
@@ -77,17 +81,16 @@ The public `appdetails` response carries everything else. Field by field:
 A second endpoint, and the ids are the app's own:
 
 ```
-https://store.steampowered.com/appreviews/291550?json=1&language=english&filter=all
+https://store.steampowered.com/appreviews/<appid>?json=1&language=english&filter=all
 ```
 
 Each entry carries `review` (the text), `voted_up`, `votes_up` (helpfulness) and
-`author.playtime_forever` in minutes. `query_summary` carries the totals —
-**138,815 positive against 39,861 negative** for Brawlhalla.
+`author.playtime_forever` in minutes. `query_summary` carries the totals — the positive and
+negative counts behind the page's one-word summary.
 
 `candidate_reviews()` returns them ranked by `voted_up` then helpfulness. **Ranked, not
-chosen.** Ranking by helpfulness alone put three negative reviews at the top, including an
-87-hour "I have never encountered a more spiritually bankrupt species" and a 2,364-hour
-comparison to a deal with the Devil. Those are the best-argued reviews on the page; none of
+chosen.** Ranking by helpfulness alone put three negative reviews at the top, each written by
+a player with many hours in the game. Those are the best-argued reviews on the page; none of
 them belongs on the publisher's own storefront.
 
 Pick two or three yourself, quote them into `user_reviews`, and set
@@ -110,7 +113,7 @@ carries markup that must not reach a partner's page:
 - `<span class="bb_img_ctn">` — unwrapped, text kept
 - `<video><source src="…">` — **cut with its contents**; inline trailers are Steam-hosted
 
-`sanitize.py` handles all three. For app 812140 that reduces 2,635 characters to 781 while
+`sanitize.py` handles all three. On one live listing that reduced 2,635 characters to 781 while
 keeping all three headings — the difference is video markup, not copy.
 
 A partner pasting their own store copy is pasting real BBCode; that path is `bbcode.py`, via
@@ -118,8 +121,8 @@ A partner pasting their own store copy is pasting real BBCode; that path is `bbc
 
 ## Editions are not in-app purchases
 
-`package_groups` gives four editions for app 812140 (Standard €59.99 through Ultimate
-€114.99). They are genuinely extractable and genuinely useful — but they are catalog
+`package_groups` gives the editions — four for the fixture title, Standard through Ultimate.
+They are genuinely extractable and genuinely useful — but they are catalog
 entities, not landing content. Route them to
 [`catalog-design`](../../catalog-design/SKILL.md); nothing on a landing holds a price.
 

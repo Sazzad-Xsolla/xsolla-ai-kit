@@ -29,9 +29,6 @@ validator = load_module(
 render_plan = load_module("render_plan", ROOT / "scripts" / "render_plan.py")
 preflight = load_module("preflight", ROOT / "scripts" / "preflight.py")
 backup_shop = load_module("backup_shop", ROOT / "scripts" / "backup_shop.py")
-summarize_evals = load_module(
-    "summarize_evals", ROOT / "scripts" / "summarize_evals.py"
-)
 
 
 class ShopBriefTests(unittest.TestCase):
@@ -340,50 +337,6 @@ class ShopBriefTests(unittest.TestCase):
         self.assertEqual(2, run.call_count)
         sleep.assert_called_once_with(backup_shop.LOGIN_RETRY_DELAY_SECONDS)
 
-    def test_eval_targets_pass_at_eight_of_ten(self) -> None:
-        runs = [
-            {
-                "run_id": f"run-{index}",
-                "preset": "mobile-single-page",
-                "result": "success" if index <= 8 else "failure",
-                "manual_interventions": 2,
-                "failure": None if index <= 8 else "preview mismatch",
-            }
-            for index in range(1, 11)
-        ]
-        summary = summarize_evals.summarize(runs)
-        self.assertTrue(summarize_evals.passes(summary))
-
-    def test_eval_target_fails_when_one_run_needs_three_interventions(self) -> None:
-        runs = [
-            {
-                "run_id": f"run-{index}",
-                "preset": "pc-multi-page",
-                "result": "success",
-                "manual_interventions": 3 if index == 1 else 0,
-                "failure": None,
-            }
-            for index in range(1, 11)
-        ]
-        summary = summarize_evals.summarize(runs)
-        self.assertFalse(summarize_evals.passes(summary))
-
-    def test_eval_rejects_boolean_intervention_count(self) -> None:
-        summary = summarize_evals.summarize(
-            [
-                {
-                    "run_id": "run-bool",
-                    "preset": "mobile-single-page",
-                    "result": "success",
-                    "manual_interventions": True,
-                    "failure": None,
-                }
-            ]
-        )
-        self.assertIn(
-            "run 1: manual_interventions must be a non-negative integer",
-            summary["validation_errors"],
-        )
 
 
 if __name__ == "__main__":

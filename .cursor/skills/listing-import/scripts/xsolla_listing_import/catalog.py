@@ -61,8 +61,8 @@ def _price_fragment(price):
 def build_skus(items, source):
     """Assign a unique SKU to each item.
 
-    Names collide in real data -- the App Store listing for Clash of Clans has
-    ``Gold Pass`` twice, at $4.99 and $6.99.  A collision is broken by the
+    Names collide in real data -- one App Store listing offers the same pass
+    name twice, at two prices.  A collision is broken by the
     price first, since that is what actually distinguishes them, and only then
     by an index, so a stable input gives a stable SKU.
     """
@@ -150,8 +150,8 @@ def render_commands(operations, group=DEFAULT_GROUP):
 
     Every JSON argument goes through ``shlex.quote``.  Hand-wrapping them in
     single quotes produced commands that looked right and were not: the first
-    real title through here was "Assassin's Creed Odyssey", whose apostrophe
-    closed the quote and split the argument.  A game title is exactly the kind
+    real title through here carried an apostrophe, which closed the quote and
+    split the argument.  A game title is exactly the kind
     of string that contains one.
     """
     import shlex

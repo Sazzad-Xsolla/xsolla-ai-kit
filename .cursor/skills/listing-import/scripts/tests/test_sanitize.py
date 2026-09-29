@@ -76,7 +76,7 @@ class TestVoidElementRegression(unittest.TestCase):
 
     ``source`` and ``img`` are void: they never send a close tag.  Treating
     them as containers left the parser cutting to the end of the document, and
-    the real 2,635-character description came out 284 characters long.
+    a real 2,635-character description came out 284 characters long.
     """
 
     def test_void_element_inside_a_cut_region_does_not_swallow_the_rest(self):

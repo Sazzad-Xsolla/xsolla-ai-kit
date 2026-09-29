@@ -34,7 +34,7 @@ Python 3.9+, standard library only. No install step.
 
 ## The three sources are not the same problem
 
-Verified live against merchant 936601 on 2026-09-14:
+Verified live against a test project on 2026-09-14:
 
 | Source | Extract from | Server-side import | Extraction coverage |
 |---|---|---|---|
@@ -124,6 +124,20 @@ endpoint returns `{developer, icon, title}` and nothing else, three of eleven ta
 so it cannot supply the preview step 4 requires. The bonus is that the agent's extraction and
 the server's import can then be diffed against each other.
 
+### Before `get-listing` or `import-listing`
+
+Both Shop Builder commands are newer than some released CLI builds. Before calling either one,
+check that the installed CLI has it:
+
+```bash
+xsolla shopbuilder get-listing --help >/dev/null 2>&1 || echo "get-listing: not in this CLI"
+xsolla shopbuilder import-listing --help >/dev/null 2>&1 || echo "import-listing: not in this CLI"
+```
+
+If either line prints, **stop and tell the user to update the CLI** (`xsolla --version` shows
+what they have). Do not fall back to raw API calls. The `fetch` and `extract` path above reads
+the public store endpoints and needs neither command.
+
 ## Running it
 
 From `scripts/`. Commands are read-only unless catalog creation includes `--yes`; `--json`
@@ -195,10 +209,10 @@ All three storefronts publish a rating; **two publish the review text.**
 `candidate_reviews()` ranks them. **It does not choose, and neither should the scripts** —
 the content is hostile by default and the score does not predict it:
 
-- Ranked by helpfulness, Steam's top three for one title were all negative, including an
-  87-hour *"I have never encountered a more spiritually bankrupt species"*.
-- On the App Store, `Garbage` is a **five-star** review and `brawlhalla is hell.` is sarcastic
-  praise, also five stars.
+- Ranked by helpfulness, Steam's top three for one title were all negative, each written by a
+  player with dozens of hours in the game.
+- On the App Store, a one-line insult carried **five stars**, and so did a piece of sarcastic
+  praise.
 
 So read the candidates, pick two or three, quote them into `user_reviews` with an attribution,
 and answer the second rights question. They land one per **`bento-grid` leaf card** — no
@@ -216,12 +230,12 @@ at the catalog SKU — that is how a price reaches the button, since a landing h
 
 **Clean the edition copy before it goes on a card. This step is yours, not the scripts'.**
 A storefront's own description is written to sell on that storefront and arrives with things a
-card cannot hold. Real examples from one Steam listing:
+card cannot hold. Typical examples, in the shape they arrive from a storefront:
 
-- HTML entities left in: `Collectors &quot;Asgardian Elite&quot; Weapon Skins`
-- Pipe-separated lists: `3500 Mammoth Coins | The All Legends Pack | …`
+- HTML entities left in: `Collectors &quot;Stormcaller&quot; Weapon Skins`
+- Pipe-separated lists: `3500 Sky Coins | The Warden Pack | …`
 - Price puffery tied to another store: `Over $15 value for only $4.99!`
-- Inline dash bullets: `- Ezio Legend Unlock - Asgardian Ezio Skin - 140 Mammoth Coins`
+- Inline dash bullets: `- Warden Unlock - Stormcaller Skin - 140 Sky Coins`
 
 Put the rewritten copy in each item's `description_clean` and the planner prefers it over
 `description`. Keep it to a sentence or two, resolve entities, turn lists into prose, and drop
@@ -287,36 +301,31 @@ Shop Builder authorizes separately from the Store `XSOLLA_PROJECT_API_KEY` that
 
 ## Evidence
 
-`evals/listing-import/EVAL-LOG.md`, in the toolkit repo, records the live runs behind
-every claim above, the three
-assumptions real data corrected, and the manual interventions.
+The unit tests are the evidence that ships: offline, on fixtures for a fictional title shaped
+like each store's real response. Extraction clears 80% on all three sources and mapping is
+100%, asserted in `tests/test_extract.py` rather than claimed here.
 
 ## Historical mapper evaluation
 
-The evidence below predates the assembly handoff and validates extraction and the legacy
-diagnostic mapper. It is not evidence that listing-import should write a site directly.
+The legacy diagnostic mapper predates the assembly handoff. Its evidence validated extraction
+and the block mapping; it is not evidence that listing-import should write a site directly.
 
-Prompt: "Build me an Xsolla shop from my Steam page:
-https://store.steampowered.com/app/812140/"
+On a test project the flow was exercised end to end: rights question first, `get-listing`
+read-only (which returns only `{developer, icon, title}`), then all eleven target fields
+extracted from the public `appdetails` response (`tags` correctly declared in `not_found` —
+they render on the page but are absent from the API). The mapping preview against the
+13-block structure the server-side import produces gave 3 localization writes, 1 overflow
+component carrying genres and the age rating, 10 asset uploads, 2 companion patches and 4
+catalog items for the editions — with `platforms` and `developer` correctly reported as
+unplaceable on that template, which has no `sidebar` or `lead` block. Coverage: extraction
+90.9%, mapping 100%, delivered 90.9%. No writes were made: the run stopped at the confirmation
+step, which is where it is supposed to stop. ✅
 
-Live run on merchant `936601` / project `314771` (2026-09-14): the agent asked the rights
-question first, called `get-listing` read-only and got `{developer, icon, title}`, then
-extracted all eleven target fields from the public `appdetails` response (`tags` correctly
-declared in `not_found` — they render on the page but are absent from the API). The mapping
-preview against the real 13-block structure a prior `import-listing` produced: 3 localization
-writes, 1 overflow component carrying genres and the PEGI rating, 10 asset uploads, 2
-companion patches, and 4 catalog items for the editions — with `platforms` and `developer`
-correctly reported as unplaceable on that template, which has no `sidebar` or `lead` block.
-Coverage: extraction 90.9%, mapping 100%, delivered 90.9%. No writes were made: the run
-stopped at the confirmation step, which is where it is supposed to stop. ✅
+Play and App Store listings extracted at 88.9% (8/9), mapping 100%. Play came from the page's
+raw HTML with no browser; Apple from the lookup API plus the page for its truncated in-app
+list. Both correctly declared `key_art` and `tags` as not published, and Play carried its
+price range in `notes` rather than inventing items from it. ✅
 
-Second prompt: "Same thing from my Play listing and my App Store listing"
-— `https://play.google.com/store/apps/details?id=com.supercell.clashofclans` and
-`https://apps.apple.com/us/app/clash-of-clans/id529479190`.
-
-Both extracted at 88.9% (8/9), mapping 100%. Play came from the page's raw HTML with no
-browser; Apple from the lookup API plus the page for its truncated in-app list. Both
-correctly declared `key_art` and `tags` as not published, and Play carried its
-`$0.29 – $239.99` price range in `notes` rather than inventing items from it. ✅
-
-222 unit tests, offline, on the real fixtures from all three stores.
+Run this only against a listing the publisher owns. The unit tests run offline on fixtures
+for a fictional title ("Example Game" by "Example Studio") shaped like each store's real
+response, so no third-party listing is needed to develop or test the skill.
