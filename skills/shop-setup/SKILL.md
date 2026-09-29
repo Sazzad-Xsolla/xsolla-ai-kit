@@ -229,6 +229,12 @@ After a successful payment — whether through Headless Checkout SDK or Pay Stat
 
 ## Decision Points for the Agent
 
+**Optional in-catalog quests (headless shop):** if the publisher wants an
+optional quest section inside the existing catalog/product layout (not a nav
+tab), follow `quest-setup` →
+[`references/web-shop-module.md`](../quest-setup/references/web-shop-module.md).
+Do not expand shop-setup into the full recipe.
+
 **Which payment UI to use:**
 
 ```
