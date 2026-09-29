@@ -112,6 +112,14 @@ for `316575` are unverified. Then:
    When `web3_item.body.project` was set, do not retry the lookup without that
    project or fall back to the service default.
 
+`web3_item.body.project` selects the catalog only when the deployed reward
+worker supports it. A worker without that support ignores the field and mints
+against its configured default project, so the token reaches the wallet but
+Backpack shows it without the catalog name. After the first completed reward,
+read the minted instance back and compare its project with `body.project`. If
+they differ, report a delivery mismatch, not a success, and do not send the
+event again.
+
 Only the confirmed `sku` goes into the reward body. Also:
 
 - "Whichever", "any" or "you choose" is not a pick. Show the list again or
