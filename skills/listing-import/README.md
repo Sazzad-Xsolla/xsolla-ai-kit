@@ -23,12 +23,12 @@ parser bug.
 cd scripts
 
 # 1. what to fetch for this store URL
-python3 listing_import.py fetch --url 'https://store.steampowered.com/app/812140/'
-curl -sS 'https://store.steampowered.com/api/appdetails?appids=812140&l=english' > raw.json
+python3 listing_import.py fetch --url 'https://store.steampowered.com/app/999999999/'
+curl -sS 'https://store.steampowered.com/api/appdetails?appids=999999999&l=english' > raw.json
 
 # 2. extract, then check it. rights_confirmed comes back false: ask the partner.
 python3 listing_import.py extract --input raw.json \
-    --url 'https://store.steampowered.com/app/812140/' > listing.json
+    --url 'https://store.steampowered.com/app/999999999/' > listing.json
 python3 listing_import.py validate --listing listing.json
 # listing.json is valid.
 
@@ -93,12 +93,12 @@ Exit status: `0` clean · `1` errors or blockers · `2` bad invocation.
 cd scripts && python3 -m unittest discover -s tests -t . -v
 ```
 
-Tests run offline. Every fixture is real, not hand-written: the live `appdetails`
-response for Steam app 812140, the live iTunes lookup for id 529479190, a trimmed excerpt of
-the live Play page for `com.supercell.clashofclans`, and the block spine of a landing
-`import-listing` actually produced. A synthetic fixture would have agreed with whatever the
-code assumed; these disagreed five times, and every disagreement was a real bug or a wrong
-assumption. See `evals/listing-import/EVAL-LOG.md` in the toolkit repo.
+Tests run offline, on fixtures for a fictional title — "Example Game" by "Example Studio" —
+shaped like each store's real response: a Steam `appdetails` body, an iTunes `lookup` body, a
+trimmed Play page, and the block spine of a landing the server-side import produces. The
+shapes were checked against live responses; the content is invented, so no third-party
+listing is needed to run or extend the suite. A fixture that disagrees with the code is a bug
+in one of them — do not adjust it to agree.
 
 ## Code conventions
 

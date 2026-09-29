@@ -102,12 +102,12 @@ class TestRenderedCommands(unittest.TestCase):
         self.assertLess(text.index("admin-create-group"), text.index("create-items"))
 
     def test_an_apostrophe_in_a_title_does_not_break_the_quoting(self):
-        """The first real title through here was Assassin's Creed Odyssey."""
-        text = self._render("Assassin's Creed Odyssey - Standard Edition")
+        """A title with an apostrophe is the common case, not an edge case."""
+        text = self._render("Example Studio's Game - Standard Edition")
         command = text.split("\n\n")[1].replace("\\\n", " ")
         tokens = shlex.split(command)
         payload = json.loads(tokens[tokens.index("--name") + 1])
-        self.assertEqual(payload["en"], "Assassin's Creed Odyssey - Standard Edition")
+        self.assertEqual(payload["en"], "Example Studio's Game - Standard Edition")
 
     def test_a_double_quote_in_a_title_survives_too(self):
         text = self._render('The "Best" Game')
@@ -117,7 +117,7 @@ class TestRenderedCommands(unittest.TestCase):
         self.assertEqual(payload["en"], 'The "Best" Game')
 
     def test_non_ascii_is_not_escaped_into_mojibake(self):
-        text = self._render("Assassin's Creed® Odyssey")
+        text = self._render("Example Game®")
         self.assertIn("®", text)
 
     def test_an_unpriced_item_renders_without_the_prices_flag(self):

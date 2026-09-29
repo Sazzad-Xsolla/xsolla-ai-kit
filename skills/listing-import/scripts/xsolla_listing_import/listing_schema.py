@@ -11,15 +11,15 @@ Two fields carry more weight than their size suggests:
     Checked for *type* here and for *truth* in ``plan.py``.  Has to be ``true``
     before anything is planned.  The Shop Builder parsing
     endpoint will read *any* public store page -- verified live on 2026-09-14
-    against a Ubisoft listing on merchant 936601 -- so nothing upstream checks
+    against a listing from an unrelated publisher -- so nothing upstream checks
     whether the game belongs to the partner running the import.  This flag is
     where that check lives, and ``plan.py`` refuses without it.
 
 ``user_reviews``
     Player reviews the agent has **chosen and quoted**, not a raw feed.  Both
     Steam and Apple publish the text, and it is hostile by default: the first
-    results for one title include "Garbage" (rated five stars), "Satan's game",
-    and a 2,364-hour review comparing the game to a deal with the Devil.  The
+    results for one title included a scathing review at five stars and long,
+    bitter essays from players with thousands of hours in the game.  The
     star rating does not predict the sentiment, so nothing can be filtered on
     it -- the selection has to be read, which makes it the agent's call.
 

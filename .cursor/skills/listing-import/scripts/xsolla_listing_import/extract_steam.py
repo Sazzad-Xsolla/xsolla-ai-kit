@@ -20,7 +20,7 @@ What it misses:
 * ``package_groups`` alone is not the edition list.  It holds the page's buy
   options; the "Content For This Game" table is ``dlc``, which is app **ids**
   only and needs one lookup each.  Pass those responses as ``dlc_details`` or
-  the result under-reports -- for Brawlhalla, one entry instead of five.
+  the result under-reports -- one entry where the store page shows five.
 * Steam publishes no in-game item list at all, so ``iap_items`` here is always
   editions and DLC, never consumables.
 """
@@ -128,13 +128,11 @@ def _requirements(data):
 def candidate_reviews(review_response):
     """Player reviews from ``appreviews``, ranked, for the agent to choose from.
 
-    Not written to a page by this module and not chosen by it either.  Steam's
-    own summary for one title is 138,815 positive against 39,861 negative, and
-    the top results by helpfulness were all negative -- an 87-hour review
-    opening "I have never encountered a more spiritually bankrupt species", and
-    a 2,364-hour one comparing the game to a deal with the Devil.  Placing the
-    top results on a publisher's own storefront would put a competitor's best
-    argument there.
+    Not written to a page by this module and not chosen by it either.  On one
+    well-reviewed title the summary was overwhelmingly positive and the top
+    results by helpfulness were still all negative, written by players with
+    hundreds of hours in the game.  Placing the top results on a publisher's
+    own storefront would put a competitor's best argument there.
 
     So this returns candidates with the signals worth ranking on --
     ``voted_up``, helpfulness and playtime -- and the selection is the agent's.
@@ -143,8 +141,8 @@ def candidate_reviews(review_response):
         https://store.steampowered.com/appreviews/<appid>?json=1&language=english
 
     What this misses: it does not translate, and it does not detect sarcasm.
-    A five-star review titled "Garbage" exists, and so does praise written as
-    abuse.  Read them.
+    A five-star rating can sit on a scathing review, and praise can be written
+    as abuse.  Read them.
     """
     out = []
     for review in (review_response or {}).get("reviews") or []:
@@ -170,8 +168,8 @@ def _iap_items(data, dlc_details=None):
     edition where the store page shows five:
 
     ``package_groups``
-        The buy options rendered at the top of the page -- for Brawlhalla, just
-        "All Legends Pack". For a paid game, its editions.
+        The buy options rendered at the top of the page -- for a free-to-play
+        title, a single starter pack. For a paid game, its editions.
     ``dlc``
         A list of **app ids only**. The "Content For This Game" table on the
         page is these, and their names and prices need one ``appdetails``

@@ -17,7 +17,6 @@ Each subdirectory contains a `SKILL.md` — a structured workflow file for an Xs
 | [`webhooks-impl`](webhooks-impl/SKILL.md)                                 | Webhook handler generation            | @e.chernykh         | Done   |
 | [`production`](production/SKILL.md)                                       | Sandbox → live / go-live checklist    | @y.klochikhin       | Done   |
 | [`description-to-shop`](description-to-shop/SKILL.md)                     | Description → built Shop Builder shop | @k.shah             | WIP    |
-| [`shop-validation`](shop-validation/SKILL.md)                             | `validate-shop` gate for block shops  | @n.budhwani         | Done   |
 | [`listing-import`](listing-import/SKILL.md)                               | Steam / Play / App Store listing → shop | @n.budhwani       | Draft  |
 
 ## Adding a skill

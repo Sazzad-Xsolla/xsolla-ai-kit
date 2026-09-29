@@ -57,9 +57,9 @@ FIELDS = {
     ),
     "icon": ("media", True, {STEAM: ALWAYS, GOOGLE_PLAY: ALWAYS, APP_STORE: ALWAYS}),
     # Play was first recorded as ALWAYS here, from the documented 1024x500
-    # feature graphic.  Checked against the live page for
-    # com.supercell.clashofclans on 2026-09-14: no image on it has that shape,
-    # so Play appears to have stopped rendering it. Corrected to NEVER, which
+    # feature graphic.  Checked against a live listing on 2026-09-14: no image
+    # on the page has that shape, so Play appears to have stopped rendering
+    # it. Corrected to NEVER, which
     # keeps it out of Play's coverage denominator instead of scoring a field the
     # page does not publish as a miss.
     "key_art": ("media", True, {STEAM: ALWAYS, GOOGLE_PLAY: NEVER, APP_STORE: NEVER}),
@@ -73,7 +73,7 @@ FIELDS = {
     "tags": ("list", True, {STEAM: PARTIAL, GOOGLE_PLAY: NEVER, APP_STORE: NEVER}),
     "platforms": ("list", True, {STEAM: ALWAYS, GOOGLE_PLAY: ALWAYS, APP_STORE: ALWAYS}),
     # Steam was first written down as PARTIAL here, on the assumption that only
-    # some pages carry a rating.  Checked against app 812140 on 2026-09-14 the
+    # some pages carry a rating.  Checked against a live listing on 2026-09-14 the
     # listing exposes a full `ratings` block (pegi, esrb, usk, oflc, dejus and
     # more), so the rating is there to be read on any rated title.
     "age_rating": (
@@ -105,7 +105,7 @@ FIELDS = {
 }
 
 # Fields the Shop Builder parsing endpoint (`xsolla shopbuilder get-listing`)
-# returns.  Verified live against merchant 936601 on 2026-09-14: the response is
+# returns.  Verified live against a test project on 2026-09-14: the response is
 # `{developer, icon, title}` and nothing else, which is why the mapping preview
 # cannot be built from that call alone.
 GET_LISTING_FIELDS = ("title", "developer", "icon")

@@ -1,4 +1,4 @@
-"""Tests for the three extractors, against real store responses."""
+"""Tests for the three extractors, against fixtures shaped like each store's response."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from xsolla_listing_import import (coverage, extract, extract_appstore,
 
 from .fixtures.load import appstore_lookup, play_page, steam_appdetails
 
-STEAM_URL = "https://store.steampowered.com/app/812140/"
-APPLE_URL = "https://apps.apple.com/us/app/clash-of-clans/id529479190"
-PLAY_URL = "https://play.google.com/store/apps/details?id=com.supercell.clashofclans"
+STEAM_URL = "https://store.steampowered.com/app/999999999/"
+APPLE_URL = "https://apps.apple.com/us/app/example-game/id987654321"
+PLAY_URL = "https://play.google.com/store/apps/details?id=com.example.examplegame"
 
 
 class TestSteam(unittest.TestCase):
@@ -32,8 +32,8 @@ class TestSteam(unittest.TestCase):
 
     def test_core_fields(self):
         values = self.doc["fields"]
-        self.assertEqual(values["title"], "Assassin's Creed® Odyssey")
-        self.assertIn("Ubisoft", values["developer"])
+        self.assertEqual(values["title"], "Example Game®")
+        self.assertIn("Example Studio", values["developer"])
         self.assertEqual(values["genres"], ["Action", "Adventure", "RPG"])
         self.assertEqual(values["platforms"], ["windows"])
         self.assertEqual(len(values["screenshots"]), 8)
@@ -58,7 +58,7 @@ class TestSteam(unittest.TestCase):
 
     def test_unwrap_accepts_either_envelope(self):
         raw = steam_appdetails()
-        inner = raw["812140"]["data"]
+        inner = raw["999999999"]["data"]
         self.assertEqual(extract_steam.unwrap(raw)["name"], inner["name"])
         self.assertEqual(extract_steam.unwrap(inner)["name"], inner["name"])
 
@@ -77,8 +77,8 @@ class TestAppStore(unittest.TestCase):
 
     def test_core_fields(self):
         values = self.doc["fields"]
-        self.assertEqual(values["title"], "Clash of Clans")
-        self.assertEqual(values["developer"], "Supercell Oy")
+        self.assertEqual(values["title"], "Example Game")
+        self.assertEqual(values["developer"], "Example Studio")
         self.assertEqual(values["age_rating"], "9+")
         self.assertIn("ios", values["platforms"])
 
@@ -122,8 +122,8 @@ class TestGooglePlay(unittest.TestCase):
 
     def test_the_page_html_alone_is_enough_no_browser_needed(self):
         values = self.doc["fields"]
-        self.assertEqual(values["title"], "Clash of Clans")
-        self.assertEqual(values["developer"], "Supercell")
+        self.assertEqual(values["title"], "Example Game")
+        self.assertEqual(values["developer"], "Example Studio")
         self.assertEqual(values["age_rating"], "Everyone 10+")
         self.assertEqual(values["platforms"], ["android"])
         self.assertTrue(values["screenshots"])
@@ -166,12 +166,12 @@ class TestDispatch(unittest.TestCase):
 
     def test_fetch_hint_builds_the_api_url(self):
         _s, url, kind = extract.fetch_hint(STEAM_URL)
-        self.assertIn("appids=812140", url)
+        self.assertIn("appids=999999999", url)
         self.assertEqual(kind, "json")
 
     def test_fetch_hint_carries_the_apple_storefront_country(self):
         _s, url, _k = extract.fetch_hint(
-            "https://apps.apple.com/gb/app/clash-of-clans/id529479190")
+            "https://apps.apple.com/gb/app/example-game/id987654321")
         self.assertIn("country=gb", url)
 
     def test_play_is_fetched_as_html(self):
@@ -224,12 +224,11 @@ if __name__ == "__main__":
 class TestReviewsComeFromTheAppsOwnBlock(unittest.TestCase):
     """A Play page carries a rail of similar apps.
 
-    The real page for com.supercell... has two ">N reviews<" strings (348K and
-    328K) and seventeen aria-label ratings. Reading the first match gave
-    Brawlhalla's numbers by position, not by identity — right by luck, and a
-    DOM reorder would have silently reported a neighbour's. The JSON-LD
-    aggregateRating belongs to the app the URL names, occurs once, and carries
-    the exact count.
+    A live page carries several ">N reviews<" strings and a dozen or more
+    aria-label ratings. Reading the first match gave the named app's numbers by
+    position, not by identity — right by luck, and a DOM reorder would have
+    silently reported a neighbour's. The JSON-LD aggregateRating belongs to the
+    app the URL names, occurs once, and carries the exact count.
     """
 
     SCHEMA = ('<script type="application/ld+json">{"@type":"SoftwareApplication",'
@@ -311,10 +310,10 @@ class TestAppStoreReviewsAreTheNamedApp(unittest.TestCase):
 class TestCandidateReviewsAreCandidatesNotChoices(unittest.TestCase):
     """Steam and Apple both publish review text; Play does not.
 
-    None of it is placed by the extractor. Steam's own summary for Brawlhalla
-    is 138,815 positive against 39,861 negative, and the top results by
-    helpfulness were all negative. A five-star review titled "Garbage" exists.
-    The rating does not predict the sentiment, so the selection has to be read.
+    None of it is placed by the extractor. On one well-reviewed title the top
+    results by helpfulness were all negative, and a five-star rating sat on a
+    one-line insult. The rating does not predict the sentiment, so the
+    selection has to be read.
     """
 
     def test_steam_candidates_carry_what_you_would_rank_on(self):

@@ -1,12 +1,15 @@
 """Fixture loading.
 
-The two Steam fixtures are real, not hand-written: ``steam_listing.json`` was
-built from the live ``appdetails`` response for app 812140 and
-``steam_structure.json`` is the block spine of a landing that
-``xsolla shopbuilder import-listing`` actually produced (merchant 936601,
-2026-09-14), trimmed to ids and module names.  A synthetic fixture would have
-agreed with whatever the mapping happened to assume; these two disagreed with
-it twice, and both disagreements were real.
+Every fixture describes one fictional title, "Example Game" by "Example Studio",
+so no third-party listing is needed to run or extend the suite.  The *shapes*
+follow the live responses -- ``steam_appdetails.json`` mirrors the public
+``appdetails`` envelope, ``appstore_lookup.json`` the iTunes ``lookup`` body,
+``play_page.html`` the regions of a Play page the extractor reads, and
+``steam_structure.json`` the 13-block spine that ``xsolla shopbuilder
+import-listing`` produces on a fresh landing, trimmed to ids and module names.
+``steam_listing.json`` is the ``listing.json`` the Steam extractor builds from
+the first of those.  A fixture that disagrees with the code is a bug in one of
+them; do not adjust it to agree.
 """
 
 from __future__ import annotations
@@ -31,22 +34,22 @@ def steam_structure():
 
 
 def steam_appdetails():
-    """The live `appdetails` response for app 812140, 2026-09-14."""
+    """An ``appdetails`` response for the fictional title, keyed by its app id."""
     return load("steam_appdetails.json")
 
 
 def appstore_lookup():
-    """The live iTunes lookup response for id 529479190, 2026-09-14."""
+    """An iTunes ``lookup`` response for the fictional title."""
     return load("appstore_lookup.json")
 
 
 def play_page():
-    """A trimmed excerpt of the live Play page for com.supercell.clashofclans.
+    """A trimmed Play page for the fictional title.
 
-    Every region the extractor reads, with the real markup preserved -- the
-    ``og:`` meta tags, the developer and category links, the rating, the
+    Every region the extractor reads, in the markup shape the live page uses --
+    the ``og:`` meta tags, the developer and category links, the rating, the
     screenshot URLs, the price range and the whole ``data-g-id="description"``
-    subtree.  The full page is 1.3 MB, which is not a fixture.
+    subtree.  A full page is over a megabyte, which is not a fixture.
     """
     with open(os.path.join(HERE, "play_page.html"), "r", encoding="utf-8") as handle:
         return handle.read()

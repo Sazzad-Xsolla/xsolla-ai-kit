@@ -5,7 +5,7 @@ Input is the raw HTML of ``https://play.google.com/store/apps/details?id=<pkg>``
 
 Play's page is React-rendered, so a naive fetch-and-read finds nothing useful in
 the visible text and the obvious conclusion is that it needs a headless
-browser.  It does not: verified on 2026-09-14 for ``com.supercell.clashofclans``,
+browser.  It does not: verified on 2026-09-14 against a live listing,
 a plain request returns 1.3 MB of HTML with every target field already in it --
 the ``og:`` meta tags, a ``data-g-id="description"`` container holding the full
 long description, and the image CDN URLs.
@@ -56,11 +56,11 @@ _PRICE_RANGE = re.compile(r'(\$\d[\d,]*\.\d{2})\s*[-–]\s*(\$\d[\d,]*\.\d{2})')
 # Both come from the page's JSON-LD aggregateRating, which is the app's own
 # block: one occurrence, and the count is exact.
 #
-# The visible text is not safe to read instead. There are two ">N reviews<"
-# strings on the page -- 348K and 328K for com.supercell... -- and 17
-# aria-label ratings, because the page carries a whole rail of similar apps.
-# Taking the first match gave Brawlhalla's by position, not by identity, and a
-# DOM reorder would have silently reported a neighbouring app's numbers.
+# The visible text is not safe to read instead. A live page carried two
+# ">N reviews<" strings and seventeen aria-label ratings, because the page
+# carries a whole rail of similar apps.  Taking the first match gave the named
+# app's numbers by position, not by identity, and a DOM reorder would have
+# silently reported a neighbouring app's.
 _RATING_SCHEMA = re.compile(r'"ratingValue"\s*:\s*"?([\d.]+)')
 _RATING_COUNT_SCHEMA = re.compile(r'"ratingCount"\s*:\s*"?(\d+)')
 # Kept only as a last resort, and it stays abbreviated because the visible
