@@ -14,6 +14,7 @@ Subcommands:
 ``preview``   the extracted-to-shop mapping, for the confirmation step
 ``plan``      the same mapping as ordered operations, for execution
 ``catalog``   the CLI commands that create the in-app items
+``handoff``   the normalized brief consumed by shop-builder-assembly
 ``bbcode``    Steam BBCode to Shop Builder HTML, on its own
 
 The only module that prints.  Everything it renders comes from the library,
@@ -24,7 +25,9 @@ touching a rule.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+from pathlib import Path
 import sys
 
 from xsolla_listing_import import catalog as catalog_plan
@@ -265,6 +268,37 @@ def cmd_catalog(args):
     return EXIT_CLEAN
 
 
+def _assembly_handoff():
+    """Load the assembly-owned adapter without copying its contract here."""
+    script = (Path(__file__).resolve().parents[2] / "shop-builder-assembly" /
+              "scripts" / "build_listing_brief.py")
+    if not script.is_file():
+        raise ValueError("shop-builder-assembly handoff adapter is not installed")
+    sys.path.insert(0, str(script.parent))
+    spec = importlib.util.spec_from_file_location("build_listing_brief", script)
+    if spec is None or spec.loader is None:
+        raise ValueError("cannot load shop-builder-assembly handoff adapter")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def cmd_handoff(args):
+    listing = _load(args.listing)
+    errors = validate_listing(listing)
+    if errors:
+        raise ValueError("listing.json is invalid: " + "; ".join(
+            "%s expected %s" % (error["path"], error["expected"])
+            for error in errors))
+    brief = _assembly_handoff().build_brief(listing, _load(args.context))
+    rendered = json.dumps(brief, indent=2, ensure_ascii=False) + "\n"
+    if args.output:
+        Path(args.output).write_text(rendered, encoding="utf-8")
+    else:
+        print(rendered, end="")
+    return EXIT_CLEAN
+
+
 def cmd_bbcode(args):
     with open(args.file, "r", encoding="utf-8") as handle:
         source = handle.read()
@@ -329,6 +363,13 @@ def build_parser():
     cat.add_argument("--listing", required=True)
     cat.add_argument("--json", action="store_true")
     cat.set_defaults(handler=cmd_catalog)
+
+    handoff = subparsers.add_parser(
+        "handoff", help="brief for shop-builder-assembly after catalog success")
+    handoff.add_argument("--listing", required=True)
+    handoff.add_argument("--context", required=True)
+    handoff.add_argument("--output")
+    handoff.set_defaults(handler=cmd_handoff)
 
     bbcode_cmd = subparsers.add_parser("bbcode", help="Steam BBCode to HTML")
     bbcode_cmd.add_argument("--file", required=True)

@@ -40,7 +40,7 @@ values, but must preserve `sources` so the user can see where decisions came fro
 Allowed presets: `auto`, `mobile-single-page`, `pc-multi-page`, and
 `live-service-events`. Allowed catalog group types: `virtual_good`, `bundle`, and
 `virtual_currency`. `project.environment` may be `sandbox` or `test`. For `test`, the
-brief must also contain `"test_project_acknowledged": true`. Before a write,
+`project` object must also contain `"test_project_acknowledged": true`. Before a write,
 `preflight.py` and `apply_plan.py` additionally require a separate local allowlist:
 
 ```json
@@ -96,8 +96,53 @@ before planning or writes.
 ## Handoff contract for other skills
 
 - Description skills populate `game`, approved `content`, and relevant `sources`.
-- External-store skills populate observed information architecture, copy, and catalog
-  mappings without carrying third-party tracking or credentials.
+- `listing-import` creates the catalog first, then uses the deterministic adapter below.
+  Only colors, fonts, game name, plain-text description, and catalog references cross
+  the boundary. Images, icons, screenshots, reviews, and tracking data never do.
 - Figma skills populate `brand`, assets, and explicit page/block intent.
 - This skill owns preset choice, dependency ordering, Shop Builder writes, and final
   verification. Callers must not duplicate those operations.
+
+### Listing-import adapter
+
+After every catalog command succeeds, record its result separately from `listing.json`:
+
+```json
+{
+  "project": {"merchant_id": 12345, "project_id": 67890, "environment": "sandbox"},
+  "site": {
+    "name": "Space Legends Shop",
+    "slug": "space-legends-shop",
+    "preset": "auto",
+    "primary_locale": "en-US",
+    "locales": ["en-US"]
+  },
+  "catalog_result": {
+    "status": "created",
+    "group_external_id": "imported_listing",
+    "created_skus": ["starter_pack"]
+  },
+  "style": {
+    "colors": {"primary": "#6024e0"},
+    "fonts": {"heading": "Inter"}
+  }
+}
+```
+
+`style` supports only `colors` and `fonts`, each as string tokens. Use
+`catalog_result.status: "empty"` with no group or SKUs only when the listing has no
+creatable items. A failed catalog operation, including HTTP 422 for an existing SKU,
+must stop the flow and must not produce a successful handoff.
+
+```bash
+python3 skills/shop-builder-assembly/scripts/build_listing_brief.py \
+  --listing listing.json \
+  --context listing-handoff.json \
+  --output brief.json
+python3 skills/shop-builder-assembly/scripts/validate_shop_brief.py brief.json
+```
+
+The adapter strips HTML/BBCode media from the description, derives a safe platform
+default from the source, validates the resulting brief, and rejects unapproved style
+fields or media URLs. Hand the validated brief to this skill; do not call a
+listing-specific site writer.

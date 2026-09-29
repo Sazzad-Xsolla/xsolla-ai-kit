@@ -227,6 +227,60 @@ class TestFetchExtractCatalogCommands(CliCase):
         _status, out = self.run_cli(["catalog", "--listing", path, "--json"])
         self.assertTrue(json.loads(out)["warnings"])
 
+    def test_handoff_builds_the_assembly_brief_and_drops_media(self):
+        document = steam_listing()
+        document["fields"]["icon"] = "https://media.invalid/icon.png"
+        listing = self.write("l.json", document)
+        context = self.write("context.json", {
+            "project": {
+                "merchant_id": 123,
+                "project_id": 456,
+                "environment": "sandbox",
+            },
+            "site": {
+                "name": "Example Shop",
+                "slug": "example-shop",
+                "preset": "auto",
+                "primary_locale": "en-US",
+                "locales": ["en-US"],
+            },
+            "catalog_result": {
+                "status": "created",
+                "group_external_id": "imported_listing",
+                "created_skus": ["starter_pack"],
+            },
+            "style": {"colors": {"primary": "#112233"}},
+        })
+        status, out = self.run_cli([
+            "handoff", "--listing", listing, "--context", context])
+        self.assertEqual(status, CLEAN)
+        brief = json.loads(out)
+        self.assertEqual("imported_listing",
+                         brief["catalog"]["groups"][0]["external_id"])
+        self.assertEqual("#112233", brief["brand"]["colors"]["primary"])
+        self.assertNotIn("media.invalid", out)
+
+    def test_handoff_rejects_an_incomplete_catalog_result(self):
+        listing = self.write("l.json", steam_listing())
+        context = self.write("context.json", {
+            "project": {
+                "merchant_id": 123,
+                "project_id": 456,
+                "environment": "sandbox",
+            },
+            "site": {
+                "name": "Example Shop",
+                "slug": "example-shop",
+                "preset": "auto",
+                "primary_locale": "en-US",
+                "locales": ["en-US"],
+            },
+            "catalog_result": {"status": "planned"},
+        })
+        status, _out = self.run_cli([
+            "handoff", "--listing", listing, "--context", context])
+        self.assertEqual(status, USAGE)
+
     def test_preview_shows_the_catalog_section(self):
         listing = self.write("l.json", steam_listing())
         structure = self.write("s.json", steam_structure())
