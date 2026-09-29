@@ -101,21 +101,22 @@ every Play run — a sudden gap there is a redesign, not a bad listing.
 2. **Extract and validate.** `fetch` identifies the request; `extract` creates
    `listing.json`; `validate` and `coverage` report missing fields.
 3. **Create the catalog.** Show the catalog operations and get explicit confirmation.
-   Execute them with the catalog script. If any operation fails, stop. In particular,
+   Execute them with `listing_import.py catalog --yes --output catalog-result.json`.
+   The command writes the result itself only after every operation succeeds. If any
+   operation fails, stop. In particular,
    HTTP 422 for an existing SKU is not success: report it and never bind a buy button
    to the pre-existing SKU.
-4. **Record the successful result.** Write `listing-handoff.json` with the target
-   project/site, approved color and font tokens, and `catalog_result`. Mark it `created`
-   only after every catalog command succeeds; use `empty` only when the listing has no
-   creatable items.
+4. **Record assembly context.** Write `listing-handoff.json` with only the target
+   project/site and approved color and font tokens. Never copy or hand-edit
+   `catalog_result`; the catalog command owns `catalog-result.json`.
 5. **Build the assembly brief.** Run
-   `listing_import.py handoff`. It calls the assembly-owned adapter, carries only colors,
-   fonts, game name, plain-text description, and catalog references and rejects media,
-   reviews, unknown style fields, and incomplete catalog results.
+   `listing_import.py handoff --catalog-result catalog-result.json`. It calls the
+   assembly-owned adapter, carries only colors, fonts, game name, plain-text description,
+   and catalog references and rejects media, reviews, unknown style fields, and incomplete
+   catalog results.
 6. **Delegate.** Invoke `shop-builder-assembly` with the validated brief. It backs up,
    plans theme/pages/navigation/blocks/catalog links, asks for its own confirmation,
-   writes, reads back, verifies, and may enable preview. Do not call `apply_plan.py` for
-   the integrated flow.
+   writes, reads back, verifies, and may enable preview. listing-import has no site writer.
 7. **Never publish.** A human publishes in Publisher Account.
 
 For Steam, step 2 also happens — even though the backend can import by itself. The parsing
@@ -125,8 +126,9 @@ the server's import can then be diffed against each other.
 
 ## Running it
 
-From `scripts/`. All read-only; `--json` gives the machine-readable report in
-[`README.md`](README.md). Exit status `0` clean, `1` something to fix, `2` bad invocation.
+From `scripts/`. Commands are read-only unless catalog creation includes `--yes`; `--json`
+gives the machine-readable report in [`README.md`](README.md). Exit status `0` clean, `1`
+something to fix, `2` bad invocation.
 
 | About to | Run |
 |---|---|
@@ -134,8 +136,9 @@ From `scripts/`. All read-only; `--json` gives the machine-readable report in
 | Turn a response into a listing | `python3 listing_import.py extract --input raw.json --url <store url>` |
 | Check the extraction | `python3 listing_import.py validate --listing listing.json` |
 | Report field coverage | `python3 listing_import.py coverage --listing listing.json` |
-| Create the in-app items | `python3 listing_import.py catalog --listing listing.json` |
-| Build the assembly brief after catalog success | `python3 listing_import.py handoff --listing listing.json --context listing-handoff.json --output brief.json` |
+| Rehearse catalog creation | `python3 listing_import.py catalog --listing listing.json` |
+| Create catalog and its result | `python3 listing_import.py catalog --listing listing.json --merchant-id <M> --project-id <P> --yes --output catalog-result.json` |
+| Build the assembly brief | `python3 listing_import.py handoff --listing listing.json --context listing-handoff.json --catalog-result catalog-result.json --output brief.json` |
 | Inspect the legacy block mapping (diagnostic only) | `python3 listing_import.py preview --listing listing.json --structure structure.json` |
 | Extract Steam with its editions | `python3 listing_import.py extract --input raw.json --url <url> --dlc dlc.json` |
 | Convert pasted Steam BBCode | `python3 listing_import.py bbcode --file description.txt` |
@@ -143,22 +146,15 @@ From `scripts/`. All read-only; `--json` gives the machine-readable report in
 Pass `--localization` (from `get-localization`) to `preview`/`plan` as well; without it, `L:`
 reference existence is reported as unverified rather than assumed.
 
-The Steam happy path, and the order that matters:
+The legacy mapper can inspect an existing test site's export for diagnostics. It never
+writes the site:
 
 ```bash
-SLUG=<landing slug>
-xsolla shopbuilder create-website --name "<Name>" --slug $SLUG --type topup
-# import-listing on an EMPTY landing only. set-landing-type first creates a
-# structure, and the import then returns 200 and silently does nothing.
-xsolla shopbuilder import-listing --slug $SLUG --type sellingpage --target <store url>
 xsolla shopbuilder get-structure --slug $SLUG --json > structure_raw.json
 python3 -c 'import json;json.dump(json.load(open("structure_raw.json"))["data"],
     open("structure.json","w"))'
 python3 listing_import.py preview --listing listing.json --structure structure.json
 ```
-
-`--type` is the landing *template*, not the store name: `sellingpage`. `steam` and `gplay`
-are rejected by the live API.
 
 ## Reading the coverage report
 

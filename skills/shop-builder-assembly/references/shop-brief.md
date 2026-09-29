@@ -117,11 +117,6 @@ After every catalog command succeeds, record its result separately from `listing
     "primary_locale": "en-US",
     "locales": ["en-US"]
   },
-  "catalog_result": {
-    "status": "created",
-    "group_external_id": "imported_listing",
-    "created_skus": ["starter_pack"]
-  },
   "style": {
     "colors": {"primary": "#6024e0"},
     "fonts": {"heading": "Inter"}
@@ -129,15 +124,17 @@ After every catalog command succeeds, record its result separately from `listing
 }
 ```
 
-`style` supports only `colors` and `fonts`, each as string tokens. Use
-`catalog_result.status: "empty"` with no group or SKUs only when the listing has no
-creatable items. A failed catalog operation, including HTTP 422 for an existing SKU,
-must stop the flow and must not produce a successful handoff.
+`style` supports only `colors` and `fonts`, each as string tokens. The separate
+`catalog-result.json` is written by listing-import's confirmed catalog step; never ask
+the agent to fill it in. It contains `status: "empty"` with no group or SKUs only when
+the listing has no creatable items. A failed catalog operation, including HTTP 422 for
+an existing SKU, stops the flow and produces no result file.
 
 ```bash
 python3 skills/shop-builder-assembly/scripts/build_listing_brief.py \
   --listing listing.json \
   --context listing-handoff.json \
+  --catalog-result catalog-result.json \
   --output brief.json
 python3 skills/shop-builder-assembly/scripts/validate_shop_brief.py brief.json
 ```

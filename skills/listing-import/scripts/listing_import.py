@@ -13,7 +13,7 @@ Subcommands:
 ``coverage``  the field-coverage metric, split three ways
 ``preview``   the extracted-to-shop mapping, for the confirmation step
 ``plan``      the same mapping as ordered operations, for execution
-``catalog``   the CLI commands that create the in-app items
+``catalog``   create the in-app items and write catalog-result.json
 ``handoff``   the normalized brief consumed by shop-builder-assembly
 ``bbcode``    Steam BBCode to Shop Builder HTML, on its own
 
@@ -253,11 +253,50 @@ def cmd_extract(args):
 
 def cmd_catalog(args):
     document = _load(args.listing)
+    errors = validate_listing(document)
+    if errors:
+        raise ValueError("listing.json is invalid: " + "; ".join(
+            "%s expected %s" % (error["path"], error["expected"])
+            for error in errors))
     items = (document.get("fields") or {}).get("iap_items") or []
-    if not items:
+    operations, warnings = catalog_plan.build_operations(items, document.get("source"))
+    if args.yes:
+        if operations and (args.merchant_id is None or args.project_id is None):
+            raise ValueError("--merchant-id and --project-id are required with --yes")
+        if not args.output:
+            raise ValueError("--output is required with --yes")
+        outcome = catalog_plan.apply_operations(
+            operations,
+            args.merchant_id,
+            args.project_id,
+            confirmed=True,
+        )
+        if outcome["catalog_result"] is not None:
+            catalog_plan.write_result(args.output, outcome["catalog_result"])
+        report = {
+            "ok": outcome["catalog_result"] is not None,
+            "status": outcome["status"],
+            "catalog_result": outcome["catalog_result"],
+            "failed": outcome["failed"],
+            "warnings": warnings,
+            "result_file": args.output if outcome["catalog_result"] is not None else None,
+        }
+        if args.json:
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        elif report["ok"]:
+            print("Catalog %s; wrote %s." % (outcome["status"], args.output))
+            for warning in warnings:
+                print("# %s" % warning)
+        else:
+            print("Catalog creation stopped; no catalog result was written.")
+            for failure in outcome["failed"]:
+                print("# %s: %s" % (failure.get("sku") or failure.get("step"),
+                                    failure["reason"]))
+        return EXIT_CLEAN if report["ok"] else EXIT_ERRORS
+
+    if not operations:
         print("No in-app items in this listing; nothing to create.")
         return EXIT_CLEAN
-    operations, warnings = catalog_plan.build_operations(items, document.get("source"))
     if args.json:
         print(json.dumps({"operations": operations, "warnings": warnings}, indent=2))
         return EXIT_CLEAN
@@ -290,7 +329,9 @@ def cmd_handoff(args):
         raise ValueError("listing.json is invalid: " + "; ".join(
             "%s expected %s" % (error["path"], error["expected"])
             for error in errors))
-    brief = _assembly_handoff().build_brief(listing, _load(args.context))
+    context = _load(args.context)
+    context["catalog_result"] = _load(args.catalog_result)
+    brief = _assembly_handoff().build_brief(listing, context)
     rendered = json.dumps(brief, indent=2, ensure_ascii=False) + "\n"
     if args.output:
         Path(args.output).write_text(rendered, encoding="utf-8")
@@ -359,8 +400,13 @@ def build_parser():
                                    "list is only the page's buy options")
     ext.set_defaults(handler=cmd_extract)
 
-    cat = subparsers.add_parser("catalog", help="commands to create the in-app items")
+    cat = subparsers.add_parser("catalog", help="create the in-app items")
     cat.add_argument("--listing", required=True)
+    cat.add_argument("--merchant-id", type=int)
+    cat.add_argument("--project-id", type=int)
+    cat.add_argument("--yes", action="store_true",
+                     help="create the catalog; otherwise print a rehearsal")
+    cat.add_argument("--output", help="catalog result JSON (required with --yes)")
     cat.add_argument("--json", action="store_true")
     cat.set_defaults(handler=cmd_catalog)
 
@@ -368,6 +414,8 @@ def build_parser():
         "handoff", help="brief for shop-builder-assembly after catalog success")
     handoff.add_argument("--listing", required=True)
     handoff.add_argument("--context", required=True)
+    handoff.add_argument("--catalog-result", required=True,
+                         help="result written by the catalog step")
     handoff.add_argument("--output")
     handoff.set_defaults(handler=cmd_handoff)
 

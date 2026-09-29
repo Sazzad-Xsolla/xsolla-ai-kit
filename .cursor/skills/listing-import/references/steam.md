@@ -1,20 +1,18 @@
 # Steam — the wrapped path
 
-Steam is the one source with a working server-side import, so this skill's job here is the
-safety envelope around it plus the fields it leaves unset.
+Steam is the one source with a working server-side import. listing-import does not call it:
+the skill creates catalog entities, then hands the site work to shop-builder-assembly. The
+observations below explain the diagnostic structure fixture and the fields the server-side
+import leaves unset.
 
-## The order, and the trap in it
+## Historical server-side import trap
 
-```bash
-xsolla shopbuilder create-website  --name "<Name>" --slug $SLUG --type topup
-xsolla shopbuilder import-listing  --slug $SLUG --type sellingpage --target <store url>
-xsolla shopbuilder get-structure   --slug $SLUG --json
-```
-
-**`import-listing` only creates a structure; it will not replace one.** On a landing that
+The server-side `import-listing` command only creates a structure; it will not replace one.
+On a landing that
 already has a structure it returns `200` and changes nothing, with no error. `set-landing-type`
 *creates* a structure — so running it first causes the silent no-op. The import sets the
-landing type itself.
+landing type itself. This is retained as product evidence, not as an instruction to write a
+site from this skill.
 
 If `get-structure` comes back with `pages: 0`, the import did not run. If it comes back with
 blocks you did not expect, the landing was not empty.
@@ -23,7 +21,8 @@ blocks you did not expect, the landing was not empty.
 are rejected by the live API with `type must be one of the following values: sellingpage,
 topup`.
 
-`import-listing` cannot be sandboxed — `--sandbox` refuses without `--force`.
+`import-listing` cannot be sandboxed — `--sandbox` refuses without `--force`. Do not route
+around that limitation; shop-builder-assembly owns the supported test-project site flow.
 
 ## What the import produces
 

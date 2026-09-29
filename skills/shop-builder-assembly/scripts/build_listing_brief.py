@@ -224,10 +224,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--listing", type=Path, required=True)
     parser.add_argument("--context", type=Path, required=True)
+    parser.add_argument(
+        "--catalog-result",
+        type=Path,
+        required=True,
+        help="trusted result written by listing-import's catalog step",
+    )
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     try:
-        brief = build_brief(_load(args.listing), _load(args.context))
+        context = _load(args.context)
+        context["catalog_result"] = _load(args.catalog_result)
+        brief = build_brief(_load(args.listing), context)
         rendered = json.dumps(brief, indent=2, ensure_ascii=False) + "\n"
         if args.output:
             args.output.write_text(rendered, encoding="utf-8")

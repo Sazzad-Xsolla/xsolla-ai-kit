@@ -8,6 +8,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 import listing_import
 
@@ -227,6 +228,53 @@ class TestFetchExtractCatalogCommands(CliCase):
         _status, out = self.run_cli(["catalog", "--listing", path, "--json"])
         self.assertTrue(json.loads(out)["warnings"])
 
+    def test_catalog_execution_writes_its_own_result(self):
+        listing = self.write("l.json", steam_listing())
+        result = os.path.join(self.tmp, "catalog-result.json")
+        completed = {
+            "status": "created",
+            "confirmed": True,
+            "commands": [],
+            "created_skus": ["steam_pack"],
+            "failed": [],
+            "catalog_result": {
+                "status": "created",
+                "group_external_id": "imported_listing",
+                "created_skus": ["steam_pack"],
+            },
+        }
+        with mock.patch.object(
+            listing_import.catalog_plan, "apply_operations", return_value=completed
+        ):
+            status, _out = self.run_cli([
+                "catalog", "--listing", listing, "--merchant-id", "123",
+                "--project-id", "456", "--yes", "--output", result,
+            ])
+        self.assertEqual(CLEAN, status)
+        with open(result, encoding="utf-8") as handle:
+            self.assertEqual(completed["catalog_result"], json.load(handle))
+
+    def test_failed_catalog_does_not_write_a_result(self):
+        listing = self.write("l.json", steam_listing())
+        result = os.path.join(self.tmp, "catalog-result.json")
+        failed = {
+            "status": "failed",
+            "confirmed": True,
+            "commands": [],
+            "created_skus": [],
+            "failed": [{"sku": "steam_pack", "reason": "SKU exists"}],
+            "catalog_result": None,
+        }
+        with mock.patch.object(
+            listing_import.catalog_plan, "apply_operations", return_value=failed
+        ):
+            status, _out = self.run_cli([
+                "catalog", "--listing", listing, "--merchant-id", "123",
+                "--project-id", "456", "--yes", "--output", result,
+            ])
+        self.assertEqual(ERRORS, status)
+        self.assertFalse(os.path.exists(result))
+
     def test_handoff_builds_the_assembly_brief_and_drops_media(self):
         document = steam_listing()
         document["fields"]["icon"] = "https://media.invalid/icon.png"
@@ -244,15 +292,17 @@ class TestFetchExtractCatalogCommands(CliCase):
                 "primary_locale": "en-US",
                 "locales": ["en-US"],
             },
-            "catalog_result": {
-                "status": "created",
-                "group_external_id": "imported_listing",
-                "created_skus": ["starter_pack"],
-            },
+            "catalog_result": {"status": "planned"},
             "style": {"colors": {"primary": "#112233"}},
         })
+        catalog_result = self.write("catalog-result.json", {
+            "status": "created",
+            "group_external_id": "imported_listing",
+            "created_skus": ["starter_pack"],
+        })
         status, out = self.run_cli([
-            "handoff", "--listing", listing, "--context", context])
+            "handoff", "--listing", listing, "--context", context,
+            "--catalog-result", catalog_result])
         self.assertEqual(status, CLEAN)
         brief = json.loads(out)
         self.assertEqual("imported_listing",
@@ -275,10 +325,11 @@ class TestFetchExtractCatalogCommands(CliCase):
                 "primary_locale": "en-US",
                 "locales": ["en-US"],
             },
-            "catalog_result": {"status": "planned"},
         })
+        catalog_result = self.write("catalog-result.json", {"status": "planned"})
         status, _out = self.run_cli([
-            "handoff", "--listing", listing, "--context", context])
+            "handoff", "--listing", listing, "--context", context,
+            "--catalog-result", catalog_result])
         self.assertEqual(status, USAGE)
 
     def test_preview_shows_the_catalog_section(self):
