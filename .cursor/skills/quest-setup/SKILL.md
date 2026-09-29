@@ -5,13 +5,16 @@ description: >-
   submits a quest event, and verifies that the event actually made the quest
   execute. Covers the whole quest document: the node graph and its connections,
   the seven node subtypes, the condition grammar, activation limits, and all
-  nine reward types including web3_item and web3_token ERC-20 payouts. Use when
-  setting up a quest, adding a trigger or a condition, attaching a reward,
-  editing or activating an existing quest, firing a test event, or working out
-  why a quest did not fire. Examples: "create a quest", "add a Web3 reward to
-  my quest", "make a quest that pays USDC", "trigger my quest", "send a quest
-  event", "why didn't my quest complete", "list my quests", "activate a quest",
-  "quest platform API".
+  nine reward types including web3_item and web3_token ERC-20 payouts. Also
+  adds or updates an optional in-catalog quest module on a headless Web Shop
+  (never a nav tab). Use when setting up a quest, adding a trigger or a
+  condition, attaching a reward, editing or activating an existing quest,
+  firing a test event, working out why a quest did not fire, or when the
+  developer asks to show quests in a web shop. Examples: "create a quest",
+  "add a Web3 reward to my quest", "make a quest that pays USDC", "trigger my
+  quest", "send a quest event", "why didn't my quest complete", "list my
+  quests", "activate a quest", "quest platform API", "show quests in my web
+  shop", "add quest module to shop", "quest module", "catalog quests section".
 metadata:
   owner: r.aliyev
   domain: quests
@@ -35,10 +38,13 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - List, view or edit existing quests
 - Submit a single quest event to make a quest run
 - Check whether an event actually caused a quest to execute
+- Add or update an optional in-catalog quest section on a headless Web Shop
+  (see [`references/web-shop-module.md`](references/web-shop-module.md))
 
 Out of scope: on-chain finality, wallet balances and Backpack display. For a
 Web3 reward, a completed reward action means the provider returned a
 transaction hash for the claim; never state that a token was delivered.
+Site Builder / custom-blocks quest UI is out of scope for this skill.
 
 ## Prerequisites
 
@@ -101,6 +107,7 @@ continue on `references/` alone, noting that the envelope may have drifted.
 - [`references/rewards.md`](references/rewards.md): the nine reward types and their bodies, including web3_token
 - [`references/events.md`](references/events.md): submitting a quest event to qp-events-collector
 - [`references/verification.md`](references/verification.md): reading execution results back from qp-data
+- [`references/web-shop-module.md`](references/web-shop-module.md): optional in-catalog quest module for a headless Web Shop (marker, upsert, public list contract)
 
 ## Flow
 
@@ -208,6 +215,10 @@ continue on `references/` alone, noting that the envelope may have drifted.
 8. **Delete.** Only quests the developer names, one per call, after a fresh
    read and an explicit yes. `DELETE` is a soft delete with no restore route;
    follow the Deleting section of the quest reference.
+9. **Web Shop quest module (optional).** When the developer asks to show
+   quests in the web shop or add a quest module to the shop, follow
+   [`references/web-shop-module.md`](references/web-shop-module.md). Keep the
+   section inside the catalog content layout; never add a top-level nav tab.
 
 ## Safety stops
 
