@@ -124,6 +124,20 @@ endpoint returns `{developer, icon, title}` and nothing else, three of eleven ta
 so it cannot supply the preview step 4 requires. The bonus is that the agent's extraction and
 the server's import can then be diffed against each other.
 
+### Before `get-listing` or `import-listing`
+
+Both Shop Builder commands are newer than some released CLI builds. Before calling either one,
+check that the installed CLI has it:
+
+```bash
+xsolla shopbuilder get-listing --help >/dev/null 2>&1 || echo "get-listing: not in this CLI"
+xsolla shopbuilder import-listing --help >/dev/null 2>&1 || echo "import-listing: not in this CLI"
+```
+
+If either line prints, **stop and tell the user to update the CLI** (`xsolla --version` shows
+what they have). Do not fall back to raw API calls. The `fetch` and `extract` path above reads
+the public store endpoints and needs neither command.
+
 ## Running it
 
 From `scripts/`. Commands are read-only unless catalog creation includes `--yes`; `--json`

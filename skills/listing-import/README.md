@@ -15,6 +15,7 @@ parser bug.
 |---|---|
 | Python | 3.9+. Standard library only — no install, no build, no dependencies. |
 | CLI | `xsolla auth login` for the Shop Builder session. `xsolla config list` should show the sandbox merchant and project. |
+| CLI commands | `get-listing` and `import-listing` are newer than some CLI builds. Run `xsolla shopbuilder <cmd> --help` before either; if it fails, stop and update the CLI. |
 | Project | A sandbox or test project. Never a partner's live project. |
 
 ## Happy path

@@ -7,6 +7,10 @@ import leaves unset.
 
 ## Historical server-side import trap
 
+Check the installed CLI has the command first — `xsolla shopbuilder import-listing --help`
+(and `get-listing --help`). A failure means the CLI predates them: stop and ask the user to
+update it rather than reaching for the API directly.
+
 The server-side `import-listing` command only creates a structure; it will not replace one.
 On a landing that
 already has a structure it returns `200` and changes nothing, with no error. `set-landing-type`
