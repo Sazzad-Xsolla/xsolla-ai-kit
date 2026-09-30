@@ -1,0 +1,4 @@
+{"items":[{"sku":"starter_pack","type":"bundle","is_enabled":true,"is_free":false,"is_show_in_store":true,
+ "prices":[{"amount":14.99,"currency":"USD","is_default":true,"is_enabled":true}],
+ "vc_prices":[],"groups":[{"external_id":"cosmetics","name":{"en":"Cosmetics"}}],
+ "name":{"en":"Starter Pack"},"description":{"en":"Everything a new Warden needs."}}]}

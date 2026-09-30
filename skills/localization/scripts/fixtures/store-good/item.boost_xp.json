@@ -1,0 +1,3 @@
+{"sku":"boost_xp","prices":[{"amount":4.99,"currency":"USD","is_default":true,"is_enabled":true},{"amount":4.49,"currency":"EUR","is_default":false,"is_enabled":true}],
+ "name":{"en":"XP Booster","de":"EP-Booster"},
+ "description":{"en":"Double XP for 7 days.","de":"7 Tage lang doppelte EP."}}
