@@ -15,9 +15,7 @@ from a normalized JSON shop brief.
 ## Happy path
 
 1. Copy the closest file in `examples/` to `brief.json` and replace the project, game,
-   site, and catalog values. For a store listing, create its catalog first and use
-   `scripts/build_listing_brief.py` as documented in `references/shop-brief.md`; it
-   admits only colors, fonts, game name, description, and catalog references.
+   site, and catalog values.
 2. Validate the brief and verify the local CLI context:
 
    ```bash
@@ -81,6 +79,5 @@ catalog. Federated wrappers use their effective `values.blockId` module.
   paths, block order, retained/removal IDs, navigation, catalog, locales, and unpublished
   state. Theme and copy/assets await stable normalized inputs and contract acceptance;
   CLI readiness and preview remain tracked gaps.
-- Description and listing-import callers produce this skill's brief and leave all site
-  writes here. The listing adapter explicitly drops store images, icons, screenshots,
-  and reviews. Figma integration remains separate.
+- Description callers produce this skill's brief and leave all site writes here. Figma
+  integration remains separate.

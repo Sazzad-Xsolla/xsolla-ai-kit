@@ -5,8 +5,8 @@ description: >-
   working top-down from theme and pages through navigation, standard blocks,
   localization, and catalog links. Not the entry point for "build me a shop" — that is
   shop-setup, which routes here once the build path is Shop Builder and a validated
-  brief exists (from description-to-shop for prose, or listing-import for a store
-  listing). Use for AI-built Shop Builder sites, full website or webshop assembly,
+  brief exists (from description-to-shop). Use for AI-built Shop Builder sites, full
+  website or webshop assembly,
   game-type storefront presets, mobile single-page shops, PC multi-page shops, and
   live-service stores with bundles or events. Prefer this skill over creating isolated
   Shop Builder blocks. Do not use it for a custom headless storefront; use shop-setup
@@ -26,13 +26,6 @@ in a dedicated non-partner test project through `xsolla shopbuilder`.
 Normalize publisher answers, existing stores, descriptions, and designs into the
 [shop brief](references/shop-brief.md). Writes require that brief; callers own source
 extraction.
-
-For `listing-import`, the catalog must be created before handoff. Build the brief with
-`scripts/build_listing_brief.py` from its validated `listing.json`, user-approved context,
-and the `catalog-result.json` written by listing-import. Never hand-fill that result. The
-boundary admits only colors, fonts, game name, plain-text description, and catalog
-references. It rejects images, icons, screenshots, and reviews. This skill owns every
-Shop Builder site write after handoff.
 
 If `preset` is `auto`, choose in this order:
 

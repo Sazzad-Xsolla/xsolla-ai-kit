@@ -27,7 +27,6 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
-| `listing-import`                | Builds a shop from an existing Steam / Google Play / App Store listing                   |
 
 ---
 
@@ -59,8 +58,6 @@ Go live / leave sandbox
 Build me a shop from this description — I have no design or spec
 → triggers: shop-setup, which routes to description-to-shop once the path is Shop Builder;
   description-to-shop then delegates the build to shop-builder-assembly
-Build a shop from my Steam page / import my store listing
-→ triggers: listing-import
 ```
 
 ---

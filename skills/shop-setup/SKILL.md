@@ -43,7 +43,7 @@ esac
   `catalog-design`, `login-setup`), then hand the storefront to exactly one skill:
   - **prose only** (a description, no brief) → `description-to-shop`, which produces the
     validated shop brief and then delegates to `shop-builder-assembly` itself;
-  - **a shop brief already exists** (from `description-to-shop` or `listing-import`) →
+  - **a shop brief already exists** (from `description-to-shop`) →
     `shop-builder-assembly` directly.
 
   Neither of those is an entry point: "build me a shop" lands here first, and this step picks.
