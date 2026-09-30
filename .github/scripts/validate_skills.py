@@ -187,6 +187,8 @@ def check_links() -> None:
                     and not suffix.strip()
                 ):
                     marker = None
+        if marker is not None:
+            error(f"{md.relative_to(ROOT)}: unclosed fenced code block")
         text = "\n".join(out)
         for target in pattern.findall(text):
             target = target.split("#")[0].split(" ")[0].strip()
@@ -239,6 +241,12 @@ def check_generated_files(skill_names: list[str]) -> None:
                 error(f".cursor/skills/{name}/{src.relative_to(SKILLS / name)} is missing — run the provider sync")
             elif mirror.read_bytes() != src.read_bytes():
                 error(f".cursor/skills/{name}/{src.relative_to(SKILLS / name)} differs from its source — run the provider sync")
+        for mirror_file in (mirror_root / name).rglob("*"):
+            if not mirror_file.is_file():
+                continue
+            source = SKILLS / name / mirror_file.relative_to(mirror_root / name)
+            if not source.is_file():
+                error(f".cursor/skills/{name}/{mirror_file.relative_to(mirror_root / name)} has no source counterpart — run the provider sync")
 
 
 def check_secrets() -> None:

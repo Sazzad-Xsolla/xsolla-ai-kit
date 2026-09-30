@@ -1,14 +1,11 @@
 # The quest document
 
-Stage OpenAPI and the code of the deployed qp-server build were checked on
-2026-09-25. The deployed revision is inferred, not pinned, so revalidate
-before writes.
+The production OpenAPI and deployed Quest Platform contract must be checked
+before writes. This reference does not replace the live contract.
 
-Every quest route in this file is a project-scoped route,
-`/api/v2/merchants/{merchant_id}/projects/{project_id}/quests[/{id}]`. Below,
-`{scope}` stands for `/api/v2/merchants/{merchant_id}/projects/{project_id}`. `{merchant_id}` is exactly
-`XSOLLA_MERCHANT_ID` and `{project_id}` is `XSOLLA_PROJECT_ID`. The route
-family, the credential and the scope rules are owned by
+Every quest route in this file is a project-scoped route resolved from the live
+production OpenAPI. Below, `{scope}` stands for the selected production
+project scope. The route family, credential and scope rules are owned by
 [Project-scoped routes](auth-and-environment.md#project-scoped-routes) in the
 auth reference; if the family moves again, only that file changes. A 404
 `text/plain` body `Cannot GET ...` means a wrong or old route, not a quest or
@@ -24,12 +21,12 @@ in this skill.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `name` | string | yes | 1 to 255 characters |
-| `type` | string | yes | `liveops`, `ads`, `xsolla_app`, `social_quest`; see below. Ask; never pre-fill it |
+| `type` | string | yes | `liveops`, `ads`, `xsolla_app`, `social_quest`; see below. Use `liveops` internally for a gameplay quest unless the developer indicates another context; call it a gameplay quest in the publisher-facing preview |
 | `status` | string | yes | `active` or `inactive` on write. `deleted` is set only by `DELETE`, a soft delete, and is rejected on write |
-| `created_by` | string | yes | 1 to 255 characters. Ask the developer; never derive it from the environment |
-| `description` | string | no | if present, 5 to 1000 characters. Too short gives 422 `detail` `description: description requires a minimum of 5 characters.` (observed on stage 2026-09-25) |
-| `publisher_id` | string | server-set | set by the server on create to the route's **path** `{merchant_id}` (from code; body values are ignored). Stage does not reject a path merchant that differs from the key's, and such a quest would never match events, so the path must carry exactly `XSOLLA_MERCHANT_ID`. A `PUT` does not change it. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
-| `project_id` | string | server-set | set by the server on create to the route's path `{project_id}`. On a `PUT`, send it exactly as the last read returned it: a different value in the body would overwrite the stored one (from code). See Scope in the auth reference |
+| `created_by` | string | yes | 1 to 255 characters. Use the developer's supplied name when available; otherwise use the internal label `AI Toolkit` without asking |
+| `description` | string | no | if present, 5 to 1000 characters. Validate the live contract before relying on a server error message |
+| `publisher_id` | string | server-set | set by the server from the selected production route. Never ask for it or invent it; on a `PUT`, send it back as the last read returned it |
+| `project_id` | string | server-set | set by the server from the selected production route. On a `PUT`, send it exactly as the last read returned it. See Scope in the auth reference |
 | `start_date` | RFC3339 | **only when `active`** | not earlier than exactly 24 hours before the server's now; see below |
 | `end_date` | RFC3339 | **only when `active`** | not in the past, and at or after `start_date`. Ask; there is no default |
 | `nodes` | array | **at least 2 when `active`** | optional and may be empty when `inactive` |
@@ -43,25 +40,16 @@ in this skill.
 The conditional requirements are enforced only by the server's hand-written
 validator. They do not appear in the OpenAPI document.
 
-`type` is a label. From code (adtech 873d3c7a3c; the deployed revision is not
-pinned): the server checks it against the four values, stores it and copies it
-into qp-data (quest config and execution rows) and a worker metrics label. No
-worker or consumer code branches on it, so no value changes what the quest
-does at run time. What each value means to other tools (the admin UI,
-reports) is not verified. A loose match ("for the xsolla app" suggests
-`xsolla_app`) is only a suggestion: ask a confirming question before it goes
-into a body.
+`type` is an API classification. The live contract must confirm the accepted
+values and any downstream meaning. Keep it out of the normal publisher-facing
+preview and use plain language such as "gameplay quest" instead. A loose match
+such as "for the Xsolla app" is only a suggestion: ask a confirming question
+before it goes into a body.
 
-The `start_date` check compares instants, but its 422 message prints only the
-date, which misleads. Example (observed on stage 2026-09-23):
-`2026-09-22T00:00:00Z` sent at `2026-09-23T07:37Z` came back as
-`start_date must be on or after 2026-09-22.` That text is an example, never
-this request's answer. When you refuse a start before sending, explain the
-rule in your own words, say nothing was sent, and offer the earliest allowed
-start: the server's now minus 24 hours (in practice take "now" at send time
-and keep a margin, for example now minus 23 hours, or simply now). To start
-now, take the current instant at send time, not one computed earlier in the
-conversation, and check before sending that it is no more than 24 hours old.
+The `start_date` check compares instants. When you refuse a start before
+sending, explain the live rule in your own words, say nothing was sent, and
+offer the earliest allowed start. To start now, take the current instant at
+send time, not one computed earlier in the conversation.
 
 The `start_date` check runs on **every** write with `status: active`, including a `PUT`
 that changes nothing else. A quest whose `start_date` is more than 24 hours old
@@ -84,7 +72,7 @@ Create and update return 200, not 201, with the whole quest. Empty `nodes`,
 `connections` and `metadata` come back as `null` rather than `[]` or `{}`;
 that is not an error. An empty or absent optional field such as
 `activation_limits` or `description` may come back as `null` or be omitted
-from the response entirely (both seen on stage 2026-09-25); treat either as
+from the response entirely; treat either as
 not set. A `null` `nodes` may be sent back on an `inactive` draft; send real
 arrays when activating. An optional field missing from a response is not set;
 it is not `0` or an empty string. The list, `GET {scope}/quests`, returns
@@ -113,9 +101,9 @@ Activation is an ordinary edit: follow the Editing recipe below (fresh `GET`,
 full `PUT`) and change only `status` to `active`, `start_date`, `end_date`
 and, if the developer set one, `activation_limits`. Everything else goes back
 verbatim. For "no repeat limit", sending `activation_limits` as `null` and
-leaving it out are the same: the server model is a pointer with `omitempty`
-(`lib/models/v2` v2.9.16 `generic_quest/quest.go`, pinned by qp-server), so
-both decode to "not set". `[]` also means no limit (see Activation limits).
+leaving it out are equivalent when the live contract treats the field as
+optional. `[]` may also mean no limit; follow the live contract if these
+representations differ (see Activation limits).
 
 A relative duration ("run it for 7 days") counts from the `start_date`
 actually sent: `end_date` is that start plus 7x24 hours. If the start moves
@@ -145,7 +133,7 @@ show a fresh example and confirm again.
 - `type` is `trigger`, `action` or `condition`.
 - `id` must be a valid, non-zero UUID.
 - `on` is optional. An edge without it is always followed. With it, the
-  worker follows the edge only when the source action returns that outcome:
+  runtime follows the edge only when the source action returns that outcome:
   `ticket_issued`, `no_ticket` or `daily_cap_reached`. Only an `issue_reward`
   with `vc_wallet_ticket` `playtime` returns these outcomes today.
 - Every edge must reference a node that exists in `nodes`, and the graph must
@@ -159,21 +147,21 @@ name, for example `noop` or `webhook (placeholder)`, so a later read shows it.
 
 ### Several actions on one trigger
 
-The worker walks the graph depth-first from the trigger, one node at a time,
+The quest runtime walks the graph depth-first from the trigger, one node at a time,
 in the order the edges are listed under each source node. Several actions on
 one trigger therefore run one after another, not in parallel. They are not
-independent (from the worker code, checked 2026-09-25):
+independent:
 
 - The first node that fails stops the whole walk. Nodes after it, including
   sibling actions listed later, do not run.
 - One failed action makes the whole execution `FAILED`
   (`failReason: ACTION_FAILED`). Actions that already succeeded are not
   rolled back: a reward or notification sent before the failure stays sent.
-  Observed on stage: rows with a notification and a reward `COMPLETED` and a
-  second reward `FAILED`, execution `FAILED`.
+  A later failure does not roll back an earlier external action.
 - A condition miss also stops the walk; see `conditions.md`.
-- On the next event for the same user and quest, the worker skips nodes that
-  already succeeded in the failed run and retries the rest (from code).
+- On the next event for the same user and quest, the runtime skips nodes that
+  already succeeded in the failed run and retries the rest according to the
+  production runtime contract.
 
 How the edges are listed decides the shape. For "A then B" on trigger `T`,
 either form runs A before B, but they differ when A has an `on` outcome:
@@ -230,18 +218,15 @@ Recipe: take the body of a fresh `GET`, change only the fields the developer
 asked for, and send the rest verbatim, `null` values included. Keep the
 server-assigned fields (`id`, `created_at`, `updated_at`, `version_id`,
 `has_personalization`) as read: the server ignores them on `PUT` (the path
-`id` wins), and stage accepts them. `has_personalization` turns `true` in the
-next read after a `webshop_personalization` (no-op) node is added; that is
-expected, not a diff to report as a change. A `$schema` link may be present
-(the list GET has one, the single-quest GET on stage 2026-09-25 did not); drop
-it before the `PUT`. (From code, qp-server at adtech 873d3c7a3c: Huma accepts
-and ignores it; not verified live.) For a new node, you generate its `id` as a
-fresh random UUID (v4); the server does not assign node ids, and existing node
-ids stay unchanged. Show the before/after diff of the changed fields before
-sending.
+`id` wins). `has_personalization` turns `true` in the next read after a
+`webshop_personalization` (no-op) node is added; that is expected, not a diff
+to report as a change. A `$schema` link may be present; drop it before the
+`PUT`. For a new node, you generate its `id` as a fresh random UUID (v4); the
+server does not assign node ids, and existing node ids stay unchanged. Show the
+before/after diff of the changed fields before sending.
 
-An edit to an active quest applies to the next events once the pipeline's
-config caches expire (see `events.md`). Repeat the activation confirmations
+An edit to an active quest applies to the next events after the production
+configuration propagation window. Repeat the activation confirmations
 for the changed part when the edit touches any of: an action's subtype or
 parameters, connections that change which actions run, a reward, the
 activation limits, the dates, or `status`. An edit to `name` or
@@ -259,27 +244,24 @@ with `status: inactive` and keep the dates, nodes and limits as they are. The
 date rules apply only to `active` writes, so an old `start_date` is fine here;
 reactivating later runs them again (see Fields).
 
-While the quest is inactive, the consumer drops its events: no workflow, no
-execution row, and nothing is queued or replayed on reactivation. The dropped
-events are still indexed, so they may count toward an event-count condition
-later (inferred from code). For up to the config cache time after the pause,
-events can still run the old, active config; see `events.md`. For a quest with
-an `issue_reward`, tell the developer that such an event can still pay.
+While the quest is inactive, events do not run the inactive configuration and
+are not replayed automatically on reactivation. During the production
+propagation window, an event may still see the previous configuration; warn
+before sending an event for a quest with an external reward.
 
 ## Deleting
 
 `DELETE {scope}/quests/{id}` needs `questconfig:delete`
 (a project key acts with author rights, which include it) and returns 200 with
 `{"message": "Quest deleted successfully"}`. It is a soft delete: the quest and
-all its triggers get `status: deleted`, so events stop matching it (after the
-config cache time), and its qp-data rows stay. After that, `GET`, the list and
+all its triggers get `status: deleted`, so events stop matching it after the
+production propagation window, and its execution records stay. After that,
+`GET`, the list and
 a second `DELETE` treat it as not found: 404 problem+json with
-`"detail":"Quest not found"` (verified on the merchant project route 2026-09-25). A 404
+`"detail":"Quest not found"`. A 404
 `{"error":"Project not found"}` is a scope answer instead, not a verdict on
-the quest; see the auth reference. There is no restore route. The
-update query does not exclude deleted quests, so a `PUT` to the old id may
-overwrite and revive it (inferred from code, not tested); never use that as a
-restore, and do not `PUT` to a deleted id.
+the quest; see the auth reference. There is no restore route. Do not use an
+update as a restore, and do not `PUT` to a deleted id.
 
 Recipe:
 

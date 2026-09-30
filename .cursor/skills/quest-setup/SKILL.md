@@ -1,11 +1,11 @@
 ---
 name: quest-setup
 description: >-
-  Creates, inspects and edits Xsolla Quest Platform quests conversationally,
+  Creates, inspects and edits production Xsolla Quest Platform quests conversationally,
   submits a quest event, and verifies that the event actually made the quest
   execute. Covers the whole quest document: the node graph and its connections,
-  the seven node subtypes, the condition grammar, activation limits, and all
-  nine reward types including web3_item and web3_token ERC-20 payouts. Use when
+  the seven node subtypes, the condition grammar, activation limits, and the
+  production Web3 reward types `web3_item` and `web3_token`. Use when
   setting up a quest, adding a trigger or a condition, attaching a reward,
   editing or activating an existing quest, firing a test event, or working out
   why a quest did not fire. Examples: "create a quest", "add a Web3 reward to
@@ -20,10 +20,11 @@ metadata:
 
 ## Status
 
-This skill is a **draft**. On stage the publisher Basic credential works on
-the merchant-scoped project routes (rechecked 2026-09-25); production is not
-checked. Basic cannot send events on stage: the collector has no Basic event
-route (Flow step 6).
+This skill is **production-only**. Resolve the production Quest Platform scope
+and the Web3 catalog project from the configured integration. Never use
+staging credentials, staging services or a staging Publisher Account catalog.
+Production event submission and execution read-back still require a live
+contract and authentication preflight before the skill may use them.
 
 ## When to use
 
@@ -35,32 +36,32 @@ Use this skill when the developer wants to manage Xsolla Quest Platform quests:
 - Submit a single quest event to make a quest run
 - Check whether an event actually caused a quest to execute
 
-Out of scope: on-chain finality, wallet balances and Backpack display. For a
-Web3 reward, a completed reward action means the provider returned a
-transaction hash for the claim; never state that a token was delivered.
+Out of scope: on-chain finality, wallet balances and Backpack display. A
+completed reward action is not proof of delivery.
 
 ## Prerequisites
 
-Follow [`references/auth-and-environment.md`](references/auth-and-environment.md) for credential, hosts and scope.
+Follow [`references/auth-and-environment.md`](references/auth-and-environment.md) for the production credential and scope.
 
-**The publisher Basic credential is the lane**: the merchant id plus the
-project's API key. It works only on the routes under both the merchant and the
-project; build each from
+**The configured production publisher credential is the lane**. It works only
+on the project-scoped routes returned by the live production contract; build
+each route from
 [Project-scoped routes](references/auth-and-environment.md#project-scoped-routes),
-not from memory. `{merchant_id}` in a path is always `XSOLLA_MERCHANT_ID`,
-never user input or a response value; stage does not reject a wrong one (see
+not from memory. Merchant and project path values must come from the same
+resolved production scope, never user input or an unrelated response value (see
 [The merchant id in the path](references/auth-and-environment.md#the-merchant-id-in-the-path)).
-If the credential is not set, stop and say which values are missing; do not
-search for other credentials. Read `.env` as text, never source it (see
-[Credential](references/auth-and-environment.md#credential)). **Onboarding is
-a separate, offered write**, never silent, offered only after the developer
-says the project is their merchant's; see
+Resolve only the complete production credential source described in
+[Credential](references/auth-and-environment.md#credential). Never fall back
+to a staging configuration, ask the publisher to paste secrets or search for
+another key. If no production credential is available, report only that
+the production project is not connected and stop. **Onboarding is a separate,
+offered write**, never silent, offered only after the developer says the
+project is their merchant's; see
 [Onboarding](references/auth-and-environment.md#onboarding).
 
-The internal service key is
-[for Quest Platform staff only](references/auth-and-environment.md#service-key-staff-only):
-use it only when the developer names it, never as a fallback. OpenAPI
-discovery needs no credential, so it proves no CRUD readiness.
+Internal service keys are [staff-only](references/auth-and-environment.md#service-key-staff-only)
+and are never a fallback. OpenAPI discovery needs no credential, so it proves
+no CRUD readiness.
 
 ## Source of truth
 
@@ -84,47 +85,100 @@ a credential or project failure.** A 404 `Cannot GET <path>` means the router
 has no such path; a route the live document omits is not called. Follow
 [When a route is missing](references/auth-and-environment.md#when-a-route-is-missing).
 
-If a host is unreachable (usually no corporate network), say so and offer to
-continue on `references/` alone, noting that the envelope may have drifted.
+If the production integration is unreachable, say so and offer to continue on
+the references alone, noting that the envelope may have drifted.
 
 ## Reference material
 
-- [`references/auth-and-environment.md`](references/auth-and-environment.md): hosts, credential, project routes, onboarding, scope, reading a 401 or 404
+- [`references/auth-and-environment.md`](references/auth-and-environment.md): production credential, project routes, onboarding, scope, reading a 401 or 404
 - [`references/quest-document.md`](references/quest-document.md): the quest graph, conditional requirements, full-document PUT
 - [`references/node-subtypes.md`](references/node-subtypes.md): the seven accepted node subtypes and their parameters
 - [`references/conditions.md`](references/conditions.md): condition grammar: types, operands, operators, event counting
-- [`references/rewards.md`](references/rewards.md): the nine reward types and their bodies, including web3_token
+- [`references/rewards.md`](references/rewards.md): production Web3 reward bodies and payout safety
 - [`references/events.md`](references/events.md): submitting a quest event to qp-events-collector
-- [`references/verification.md`](references/verification.md): reading execution results back from qp-data
+- [`references/verification.md`](references/verification.md): reading execution results back from the execution service
+
+## Conversation contract
+
+Keep the publisher experience business-first and progressive:
+
+- Start with a short summary of the requested quest and the proposed outcome.
+- Ask at most one blocking business question per turn. Combine questions only
+  when the answers are independent and needed for the next write.
+- Propose safe, conventional values instead of asking for implementation
+  fields from scratch. For a gameplay quest, use `liveops` internally but
+  describe it to the publisher as a gameplay quest. Do not show the `type`
+  field in the normal preview. For an item reward, propose quantity one,
+  purpose `quest_completion`, and one payout per player. Use `AI Toolkit` as
+  the internal creator label unless the developer already supplied another
+  name. Ask only when the proposal is ambiguous or has multiple matching
+  catalog items.
+- For a named item reward, always use the production Web3 NFT path and treat
+  the destination as the player's Backpack. Do not ask whether it should go
+  to inventory or Backpack, or whether it is regular or Web3. Resolve the
+  unique item from the production minting catalog and preserve its catalog
+  project in the `web3_item` body. Never use the Quest Platform project as the
+  catalog project by default. If several items match, show only their
+  names and ask the publisher to choose. If the catalog is unavailable or
+  returns zero, report that the production Web3 catalog cannot resolve the
+  item and stop. Never use a staging catalog, Store API, public web search,
+  `inventory_item`, direct Backpack grants or ERC-20 as a fallback for a named
+  item.
+- Suggest a human-readable event name from the request, such as
+  `dragon.defeated`, and ask for confirmation only when the event cannot be
+  inferred or several events are plausible.
+- A direct request to create or inspect a quest authorizes read-only bring-up.
+  Do not ask for a plan approval before project, catalog or API-contract GETs.
+  Ask for confirmation only before the exact external write, activation or
+  event submission.
+- Keep merchant IDs, project IDs, auth lanes, headers, hostnames, OpenAPI
+  service names, internal paths and workflow narration out of normal replies.
+  Do not narrate skill loading, repository inspection or tool availability.
+  Mention technical details only when they explain a blocker or the publisher
+  asks for them. Never reveal credentials.
+- Use this response shape whenever practical: **Summary**, **Proposed setup**,
+  **Need from you**, **Next step**. Omit empty sections.
+
+## Agent test
+
+**Prompt:** `Create a quest that rewards one Fire Sword after the player defeats a dragon`
+
+**Result:** Proposes a gameplay quest with one production `web3_item` Fire Sword in the player's Backpack, asks only for unresolved business choices, and stops if the catalog cannot resolve a unique item.
 
 ## Flow
 
 1. **Bring-up.** Fetch the OpenAPI documents of the services the task will
-   call, and the collector's for any task that may create, activate or send an
-   event (recheck the missing Basic event route live; report it with the
-   events-blocked line). Run the preflight reads in
+   call. Fetch the collector's contract only when the request includes event
+   submission or execution verification. Run the preflight reads in
    [`references/auth-and-environment.md`](references/auth-and-environment.md)
-   for those services only; the qp-data probe waits for the project
-   confirmation, and is skipped when events are blocked and no execution
-   read-back was asked. The scope is the project: read it with the project GET
-   and show its `project_id`, `name` and `status`, plus the merchant id used
-   in the path (no account or workspace id; do not invent one). Get it
-   confirmed before any write. If that GET is 404 `Project not found`, report
-   it, follow [Onboarding](references/auth-and-environment.md#onboarding)
-   (offer, ask for both names), and stop. Bring-up is GET-only; after it,
-   reads the developer asks for just run, and only writes need a yes. Say at
-   bring-up that events cannot be sent on Basic (step 6).
+   for those services only; the execution read-back probe waits for the project
+   confirmation, and is skipped when no execution read-back was asked. Read and
+   confirm the project scope before a write, but report it as a short project
+   name/status summary. Do not expose raw IDs, auth details or route
+   diagnostics unless they explain the requested next step. If that GET is 404
+   `Project not found`, report it, follow
+   [Onboarding](references/auth-and-environment.md#onboarding) (offer, ask for
+   both names), and stop. Bring-up is GET-only; after it, reads the developer
+   asks for just run, and only writes need a yes. If event execution is
+   requested and the live route is unavailable, report a concise blocker at the
+   event step instead of front-loading infrastructure details.
 2. **Draft.** Create the quest as `inactive` with the four required fields,
    `name`, `type`, `status` and `created_by`; rules are in
-   [`references/quest-document.md`](references/quest-document.md). On the
-   project route the server stamps `publisher_id` and `project_id` from the
-   path and ignores body values. Never ask for, invent or override them; on a
-   `PUT`, send both back as a single-quest GET or the create response
-   returned them, never from a list item. Check optional values against
-   Fields; if one is invalid, ask, never drop or pad it. Show the body and
-   ask before the `POST`, unless the developer already approved that exact
-   body ("make a draft" is not that). Show the create response; its
-   `publisher_id` must equal `XSOLLA_MERCHANT_ID`, else stop and report.
+   [`references/quest-document.md`](references/quest-document.md). Use the
+   conversation defaults for the internal `type`, `created_by`, reward purpose
+   and repeat behavior when they are safe and supported by context. In the
+   publisher-facing preview, call `liveops` a gameplay quest and omit the
+   implementation field. Ask only for
+   unresolved business choices. On the project route the server stamps
+   `publisher_id` and `project_id` from the path and ignores body values. Never
+   ask for, invent or override them; on a `PUT`, send both back as a
+   single-quest GET or the create response returned them, never from a list
+   item. Check optional values against Fields; if one is invalid, ask, never
+   drop or pad it. Show a human-readable preview and ask before the `POST`,
+   unless the developer already approved that exact draft. Keep raw request
+   details out of the preview unless needed for confirmation or requested.
+   Show the create response and stop if its publisher or project scope does not
+   match the resolved production project.
 3. **Fill in.** Gather the values node by node, asking for each missing
    required value, then follow [Editing](references/quest-document.md#editing)
    (fresh GET, drop `$schema`, one full `PUT`, diff; for an empty draft the
@@ -135,10 +189,10 @@ continue on `references/` alone, noting that the envelope may have drifted.
    for `vc_wallet_ticket` `playtime` outcomes (quest reference). For a
    schedule, cron or "run every X" request, follow
    [Choosing a trigger](references/node-subtypes.md#choosing-a-trigger). Do
-   not offer `scheduled_event` (its Basic activation is rejected with 400,
-   from code) or `crm_send_email` ([`references/node-subtypes.md`](references/node-subtypes.md)).
-   Show the impact of any external action with the document; no webhook to an
-   internal host or the minting service (Safety stops).
+   do not offer unconfirmed optional subtypes such as `scheduled_event` or
+   `crm_send_email` ([`references/node-subtypes.md`](references/node-subtypes.md)).
+   Show the impact of any external action with the document; no webhook to a
+   private platform service or the minting service (Safety stops).
 4. **Activate.** A separate step: the Editing `PUT` with only `status`, the
    dates and `activation_limits` changed. Show one checklist in one turn:
    graph (two or more nodes, a trigger-to-action path, no intended orphans,
@@ -148,8 +202,9 @@ continue on `references/` alone, noting that the envelope may have drifted.
    impact; the dates in UTC (relative dates and a refused start, offer "now":
    [Draft first, then activate](references/quest-document.md#draft-first-then-activate);
    when the start moves, re-confirm the end); the limits and effective repeat
-   behavior; for Web3, the read-only checks in [`references/rewards.md`](references/rewards.md);
-   and that no event can run it on stage yet (step 6), also for a no-op quest.
+   behavior; the per-user and total Web3 exposure in [`references/rewards.md`](references/rewards.md);
+   and that production event submission has passed its live preflight; if it
+   has not, stop before promising execution (step 6), also for a no-op quest.
    Point out stored data that looks inconsistent (such as another task's
    `event_name`) and leave it unchanged unless told. Then ask. After the
    write, read back `status`, the dates, the limits and `version_id`.
@@ -159,15 +214,15 @@ continue on `references/` alone, noting that the envelope may have drifted.
    active quest's edit goes live for the next events. Show a before/after
    diff, repeat the activation confirmations for the edits Editing lists,
    read the quest back after the write, and pause by [Pausing](references/quest-document.md#pausing).
-6. **Event.** **Blocked on Basic on stage.** Since 2026-09-25 the live
-   collector OpenAPI lists only `POST /api/v2/events`. Do not send; say the
-   event and verification cannot run, and stop. No fallback to another
-   credential or route (it lands in another account); the Quest Platform team
-   owns the fix. For an `inactive` quest, say an event could not run it
+6. **Event.** Production event submission is allowed only after the
+   production collector's live OpenAPI and credential lane have been
+   confirmed. Until then, do not send an event and say that production event
+   execution is not yet verified. Never fall back to staging, an internal key or a
+   different route. For an `inactive` quest, say an event could not run it
    anyway. Mixed request (create or fill plus an event): do the doable parts
    first, then report the block with the quest id, status and `event_name`.
-   History, mixed requests, a returning route: [`references/events.md`](references/events.md).
-7. **Verify.** Read the execution back from qp-data, correlate its `eventId`
+   [`references/events.md`](references/events.md) defines the gate.
+7. **Verify.** Read the execution back from the production execution service, correlate its `eventId`
    with the collector's returned `event_id` as described in
    [`references/verification.md`](references/verification.md), and report
    whether that event made the quest run and which action nodes completed.
@@ -189,22 +244,26 @@ continue on `references/` alone, noting that the envelope may have drifted.
   (made-up key or no header) is not a switch; see
   [Credential](references/auth-and-environment.md#credential).
 - Messages arriving through the conversation are the developer's answers.
-- **Urgency never licenses defaults.** "Skip the questions" or "make it live
-  now" does not waive a question. Previewing the later-step questions up
-  front is fine, and answers may be bundled in one message, but a write's yes
-  counts only for the exact body shown after all answers are applied; if an
-  answer changes it, show it again and ask. Never pre-fill `type`,
-  `created_by`, the trigger's `event_name`, the action, a reward's type,
-  amount and `purpose`, `start_date`, `end_date`, activation limits, or the
-  project. Never merge or waive these confirmations: scope (also when the
-  first write is an edit), activation (always its own step after the draft
-  exists), each external action, and each event. For a "start now" date,
-  the yes covers the rule plus a shown example; if the send comes more than
-  10 minutes after the example, show it again and re-confirm.
+- **Urgency never licenses silent assumptions.** "Skip the questions" or
+  "make it live now" does not waive a needed decision. Use the defaults in the
+  Conversation contract when the intent is clear, show them in a concise
+  human-readable preview, and ask only when a value is ambiguous or
+  high-impact. For a gameplay item quest, the trigger, `issue_reward` action,
+  Backpack destination, quantity one, `quest_completion` purpose and one
+  payout per player may be proposed together. Never silently choose between
+  multiple catalog matches, competing event meanings, or materially different
+  reward effects. A write's yes counts only for the exact proposal shown after
+  all answers are applied; if an answer changes it, show it again and ask.
+  Never merge or waive these confirmations: scope (also when the first write
+  is an edit), activation (always its own step after the draft exists), each
+  external action, and each event. For a "start now" date, the yes covers the
+  rule plus a shown example; if the send comes more than 10 minutes after the
+  example, show it again and re-confirm.
 - No action is side-effect free by default. For a smoke test, offer the no-op
   in [`references/node-subtypes.md`](references/node-subtypes.md) rather than a
   real reward (placeholders `e2e-noop`, `e2e-sink.invalid`). For activation
-  or a smoke test, say events are blocked on Basic on stage (Flow step 6).
+  or a smoke test, say production events are not verified until the collector
+  preflight passes (Flow step 6).
 - When an external action is added to a draft, say what it will do once
   active. Before activation, show every externally observable action again and
   get explicit confirmation for its impact. An `issue_reward` can create real
@@ -215,14 +274,17 @@ continue on `references/` alone, noting that the envelope may have drifted.
   edit or event that it does nothing and a `COMPLETED` row proves only that
   the quest ran; a `PUT` that keeps it active needs that acknowledgement, a
   pause does not.
-- Never point `send_http_webhook` at the minting service or an
-  [internal host](references/node-subtypes.md#send_http_webhook): stage no
-  longer rejects it, and a webhook cannot mint. To pay out, use an
-  `issue_reward` Web3 reward.
-- If `activation_limits` is absent, ask the developer to explicitly choose
-  unlimited repeat behavior and acknowledge that every qualifying event may run
-  the action. Do not silently choose a limit or omit this decision. "Whatever
-  the default is" is not an acknowledgement.
+- Never point `send_http_webhook` at a private service or an
+  [unapproved host](references/node-subtypes.md#send_http_webhook): a webhook
+  cannot mint. To pay out a named item, use an `issue_reward` Web3 reward with
+  an explicit production catalog project and SKU.
+- For a named item reward, propose an explicit `per_user` limit of one and
+  explain it as "one Fire Sword per player". Do not ask about Backpack or
+  regular versus Web3 delivery. Ask only if the developer asks for repeatable
+  or unlimited rewards, or if the intended repeat behavior is otherwise
+  ambiguous. For other rewards, if `activation_limits` is absent, ask the
+  developer to acknowledge that every qualifying event may run the action;
+  do not silently choose unlimited behavior.
 - Events (once a route exists): each event needs its own payload shown and
   its own yes, including "send it again"; for a reward quest, say first
   whether a repeat can pay again. After an uncertain response, such as a
@@ -235,12 +297,12 @@ continue on `references/` alone, noting that the envelope may have drifted.
 - After a `FAILED` reward action, do not resend the event. Fix the quest, then
   send a new event with a new key only after the developer confirms.
 - A missing or timed-out Web3 reward row is never a reason to send another
-  event: the claim has no idempotency key and may already have paid; see
+  event: the reward may already have paid; see
   [`references/rewards.md`](references/rewards.md).
-- Read qp-data only by the developer's own quest id, user id or event, and
+- Read the execution service only by the developer's own quest id, user id or event, and
   only after a qp-server read with the developer's credential has shown the
   quest is theirs. Never list accounts or read another tenant's quests or
-  executions, even though qp-data answers without a credential.
+  executions, even if the service returns data without a credential.
 - Never claim a reward was delivered.
 
 ## Errors
@@ -248,18 +310,18 @@ continue on `references/` alone, noting that the envelope may have drifted.
 Branch on the HTTP status first, then on the body texts listed below. The
 API has no stable machine-readable error codes. Quote verbatim only bodies
 received in this session. For a request refused before sending, explain the
-rule in your own words and say nothing was sent; a body marked "from code" or
-"not observed" is never shown as a server answer.
+  rule in your own words and say nothing was sent; do not present an unverified
+  example as a server answer.
 
 | Status | What to tell the developer |
 |---|---|
 | 400 | `Only one authentication method may be used per request`: more than one credential was sent. Send only the one the developer chose. |
-| 401 | `Invalid credentials`: see [Reading a 401 or 404](references/auth-and-environment.md#reading-a-401-or-404). `Authentication required`: no credential reached the server. `Basic credentials are only accepted on project-scoped routes`: wrong route family, not a bad key. `Invalid API key`: the service key was rejected. `Invalid token`: a Bearer token was rejected; this skill does not send one. Never fall back to another credential. |
+| 401 | `Invalid credentials`: see [Reading a 401 or 404](references/auth-and-environment.md#reading-a-401-or-404). Never fall back to another credential or environment. |
 | 403 | `Insufficient capability`: the credential lacks the capability for that route. `Service identity is inactive`, `Master role required` or `This endpoint requires the user sign-in lane`: the route or identity is off-limits; do not retry. |
 | 404 | `Cannot GET <path>` (plain text, any method): router miss, the route does not exist; not an auth or project answer. Follow the route-miss rule in Source of truth. |
-| 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. No read-only step narrows it; see [Onboarding](references/auth-and-environment.md#onboarding). `Quest not found`: reply "The quest was not found on this project, or it is not visible with this credential." Never say it was deleted or does not exist, and correct the developer if they conclude that. One follow-up: it may be on another project, and checking needs that project's credentials. Events: Basic has no event route on stage since 2026-09-25 (the earlier 404 `{"error":"Not Found"}` is history); see Flow step 6. |
+| 404 | `Project not found` on a project route: the project is unknown, not onboarded, belongs to another merchant, or the id is not a number. The server gives the same body for all of them, so do not pick one. No read-only step narrows it; see [Onboarding](references/auth-and-environment.md#onboarding). `Quest not found`: reply "The quest was not found on this project, or it is not visible with this credential." Never say it was deleted or does not exist, and correct the developer if they conclude that. One follow-up: it may be on another project, and checking needs that project's credentials. For events, follow the production collector preflight gate in Flow step 6. |
 | 409 | Conflict. Quest routes do not return it (see Editing in the quest reference); report it verbatim. |
-| 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. `invalid integer` at `path.merchant_id`: the path merchant is not a number; rebuild the path from `XSOLLA_MERCHANT_ID`. |
+| 422 | Validation failed. Show `detail` verbatim. It never lists allowed enum values; take them from `references/`. |
 | 5xx | Server error. `Credential validation is temporarily unavailable` (503) means Xsolla could not check the key; it says nothing about the key. Retry a read at most twice, with backoff. An identical repeated 5xx is a bug, not flakiness: report it with its body. On a write never auto-retry; see Safety stops. |
 
 Middleware failures return `{"error": "..."}`; handler failures return RFC

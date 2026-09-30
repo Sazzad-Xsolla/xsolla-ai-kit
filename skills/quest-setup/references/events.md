@@ -1,70 +1,26 @@
 # Events
 
-Stage OpenAPI and local runtime snapshots were checked on 2026-09-23; the
-event route, its auth and the publisher rule were rechecked on 2026-09-25.
-Stage deployments churn and the revision is not pinned here, so revalidate
-before writes.
+This skill sends events only through the production event-ingestion integration.
+Confirm its OpenAPI and accepted credential lane before the first production
+event. Never use a staging service, internal service key or guessed route as a
+fallback.
 
-Events go to **qp-events-collector**, not to qp-server. Sending an event to
-qp-server produces a 404 that looks like a missing quest.
+## Production event gate
 
-## No event route for the project credential on stage
+Before sending an event:
 
-**Fact, checked against the live collector OpenAPI at about 09:20Z on
-2026-09-25 (rechecked 09:27Z): the collector lists only `POST /api/v2/events`,
-plus `/api/v2/debug/trigger-outbox` and health routes.** Its security schemes
-are an API key and a Bearer token. The project route
-`/api/v2/projects/{project_id}/events` is gone, and there is no
-`/merchants/...` event route. So a developer on the Basic project credential
-has **no event route at all** on stage, and `POST /api/v2/events` does not
-take that credential: it answers 401 `{"error":"Authentication required"}`
-(live, 2026-09-25). From code (collector f63f2b26ce and 3491c2c369): that
-route takes only `X-REQUEST-APIKEY` or `Authorization: Bearer <Publisher
-Account JWT>`; any other header, Basic included, gets that 401 and never
-reaches qp-server. No collector build or branch found adds Basic.
+1. Fetch the production event-ingestion OpenAPI and confirm the event
+   operation and authentication lane.
+2. Confirm that the event's publisher/project block matches the selected
+   production quest scope.
+3. If the route or credential lane is not confirmed, stop and report that
+   production event execution is not verified.
+4. If the quest is inactive or outside its dates, say that an event could not
+   run it and offer activation first.
 
-The Bearer lane is the only publisher lane on that route. From code, the
-collector validates the token through qp-server using the merchant and
-project ids from the body `publisher` block. This skill does not cover the
-Bearer lane and never sends a Bearer token.
-
-When the developer on the Basic lane asks to send an event:
-
-1. Stop. Do not send anything. Report "the collector on stage has no event
-   route for the project credential since about 09:20Z 2026-09-25".
-2. **Do not fall back to another credential or route.** Never switch to a
-   service key, an API key or a Bearer token, and never call
-   `POST /api/v2/events` or `/api/v2/debug/trigger-outbox` to get the event
-   through. Such an event lands in another account and never matches a quest
-   created on the project route, so it would prove nothing about this quest.
-3. Say that execution verification cannot run, and that the Quest Platform
-   team owns the fix. Reads of earlier executions still work; see
-   [`verification.md`](verification.md).
-4. If the quest is `inactive` (or `active` but outside its dates), also say
-   that an event could not run it anyway, and offer activation first; see
-   [`quest-document.md`](quest-document.md).
-
-**Mixed request** (for example "create the quest, fill it in, then send a test
-event"): the event block does not cancel the rest. Do the doable parts first,
-each through its own confirmation as usual (create, fill, activate if asked).
-Then, in the same final report, state the event block from step 1 and give
-the developer what they need to retry once a route exists: the quest id, its
-current status, and the `event_name` the trigger listens for. Do not skip the
-doable parts because the event cannot run, and do not claim the quest was
-verified.
-
-Revalidate: once the live collector OpenAPI lists an event route that takes
-the project credential, this section no longer applies. The rest of this file
-describes the event body and rules for when a route exists.
-
-**History (dated, not current):** from the qp-server redeploy around 08:20Z
-until the collector redeploy around 09:20Z on 2026-09-25, the project route
-`POST /api/v2/projects/{project_id}/events` still existed but answered every
-Basic event with 404 `{"error":"Not Found"}`, the same for an empty body, a
-wrong key, an unknown project and another merchant. Nothing was ingested. The
-cause, inferred from code, was that the collector validated the credential
-without a `merchant_id`. A 404 from that route is no longer the expected
-answer; the route itself is gone.
+For a mixed request, complete the separately confirmed quest work first. Then
+report the event blocker with the quest id, current status and trigger name.
+Do not claim the quest was verified.
 
 ## Payload
 
@@ -72,132 +28,68 @@ answer; the route itself is gone.
 {
   "idempotency_key": "<uuid>",
   "name": "<event_name from the trigger>",
-  "client_timestamp": "2026-09-22T10:30:00Z",
+  "client_timestamp": "<RFC3339 timestamp>",
   "user_ids": [{"identifier_type": "xsolla_id", "value": "<uuid>"}],
   "quest_id": "<uuid>",
   "scope": "private",
   "publisher": {"publisher_id": "<string>", "project_id": "<string>"},
-  "properties": {"any": "string values only"}
+  "properties": {"key": "string value"}
 }
 ```
 
 | Field | Required | Rules |
 |---|---|---|
-| `idempotency_key` | yes | a valid, non-zero UUID. Any version is accepted despite the schema hinting at v4 |
-| `name` | yes | must match the `event_name` on the quest's `dynamic_event` trigger |
+| `idempotency_key` | yes | valid, non-zero UUID; generate a fresh one per event |
+| `name` | yes | must match the quest trigger's `event_name` |
 | `client_timestamp` | yes | RFC3339 |
 | `user_ids` | yes | at least one entry |
-| `quest_id` | no | a valid UUID when present. Restricts matching to that one quest; without it, every live quest of the project's account with that `event_name` runs |
-| `scope` | no | `global`, `private`, `within_project`, `within_quest`, `within_publisher`. Defaults to `private`. It decides which quests' event-count conditions can count this event later, not which quest runs. Keep the default unless the developer asks. The published schema shows a bare string and the older struct hint lists only three values; the server accepts all five |
-| `publisher` | always send it | see "The `publisher` block" below |
-| `properties` | no | string values only |
+| `quest_id` | no | valid UUID when present; restricts matching to one quest |
+| `scope` | no | use the production contract's default unless the developer asks otherwise |
+| `publisher` | yes for this skill | must match the quest's read-back scope |
+| `properties` | no | use only values accepted by the live contract; never include secrets |
 
-`user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`.
-An `xsolla_id` value must parse as a UUID; an `email` value must contain `@`;
-`gamer_id` and `guest_id` need only be non-empty.
-
-### The `publisher` block
-
-A quest created on the project route always carries the server-set
-`publisher_id` (the merchant id) and `project_id`. The collector does not fill
-`publisher` from a route; it keeps whatever you send. Always send
-
-`{"publisher_id": "<XSOLLA_MERCHANT_ID>", "project_id": "<XSOLLA_PROJECT_ID>"}`
-
-with both ids as **strings**, and check that they equal the quest's
-`publisher_id` and `project_id` as read back from a single-quest GET (or the
-create response), never from the quest list: list items carry `project_id`
-but no `publisher_id`. If that read has no `publisher_id`, or its values
-differ from the credential's, stop and ask; do not fill anything in.
-
-What the lanes do with the block (from code, collector f63f2b26ce):
-
-- Bearer lane: both ids are required and must be positive-integer strings,
-  and they must match the token's project, or the collector answers 401
-  `{"error":"Invalid credential"}`.
-- API-key lane: the block is optional, but if present `publisher_id` is
-  required. The collector does not cross-check it. A value that does not
-  match the quest is dropped silently downstream and leaves **no** qp-data
-  row, not even `NOT_TRIGGERED` (per team docs; inferred, consumer code not
-  read).
-
-Some rewards read the merchant or project from the event, not from the quest,
-and fail without the block; see "Event-side requirements" in
-[`rewards.md`](rewards.md). The rule above already covers them.
-
-A quest with a `web3_item` or `web3_token` reward needs an `xsolla_id` entry
+`user_ids[].identifier_type` is `xsolla_id`, `gamer_id`, `guest_id` or `email`
+when supported by the live contract. A Web3 reward requires an `xsolla_id`
 whose user already has a wallet. Check it before submitting; see
 [`rewards.md`](rewards.md).
 
-The account is **not** in the body. On the old project route the collector
-took it from the project in the path.
-
-A 200 returns `{"idempotency_key": "...", "event_id": "<uuid>"}`.
-
-The scopeless `POST /api/v2/events` takes an API key or a Bearer token
-(Publisher Account JWT), not the project credential; this skill covers
-neither. See
-[`auth-and-environment.md`](auth-and-environment.md) for who may use those
-lanes. Never call `/api/v2/debug/trigger-outbox`.
+A successful response should return an event identifier. Keep it and use it to
+correlate the read-only execution result. If the response shape differs from
+this reference, follow the live OpenAPI.
 
 ## Before sending
 
-- **Wait after a quest write.** The pipeline caches quest config for up to 60
-  seconds (see [`auth-and-environment.md`](auth-and-environment.md)). After
-  creating, activating, pausing or editing a quest, wait about 90 seconds
-  before the first event, or the event may be matched against the old config.
-  Right after a pause, an event can still run the quest as active; for a quest
-  with an `issue_reward`, say so and wait before sending.
-- **Check the window.** The quest must be `active` and inside its dates at
-  event time; see [`quest-document.md`](quest-document.md).
-- **Show the exact payload**, including the `idempotency_key` you generated.
-  If the developer changes anything, generate a new key.
+- Wait for the production runtime to refresh after a quest write, according to
+  the live contract.
+- Check that the quest is active and inside its date window.
+- Show the exact payload, including the generated `idempotency_key`.
+- If the developer changes anything, generate a new key and show the payload
+  again.
 
 ## Test events and `load_test`
 
-`properties.load_test` set to exactly `"true"` makes quest-engine drop the
-event before it starts a workflow, where the bypass is enabled (see
-[`auth-and-environment.md`](auth-and-environment.md)). The collector still
-returns 200 with an `event_id`, but the quest never runs and qp-data gets no
-row. Report that as the expected outcome, not as unverified.
-
-- Use it only when the developer wants to test acceptance, not execution.
-- To verify execution, omit it. Each untagged event that matches a live quest
-  starts a billable workflow and runs its actions for real, so say so and get
-  the developer's explicit choice. Removing the flag from a test payload turns
-  it into a real event and needs the same decision.
-- Any value other than the exact string `"true"` does not bypass.
+Only use a test bypass when the production contract documents it and the
+developer explicitly wants acceptance testing rather than execution. To verify
+execution, omit the bypass and warn that matching actions may run for real.
 
 ## Idempotency
 
-There are two separate mechanisms and they are easy to confuse:
-
-- the body field `idempotency_key`, which the platform uses as the message key
-- a generic HTTP `X-Idempotency-Key` header handled by middleware, which must
-  be exactly 36 characters
-
-Use the body field. Generate a fresh UUID per event.
+The body `idempotency_key` identifies the event. Do not confuse it with an
+optional HTTP idempotency header unless the live contract requires one. Generate
+a fresh UUID per event.
 
 ## After an uncertain response
 
-If the request times out or the outcome is otherwise unknown, **stop**. Do not
-resend, not with the same key and not with a new one. A timeout is not a
-failure: the event may have been accepted and the quest may already be paying
-out. Report "result unknown", and use the execution read-back to find out what
-really happened.
+If the request times out or the outcome is otherwise unknown, stop. Do not
+resend with the same or a new key. Report "result unknown" and use the
+read-only execution check to find out what happened.
 
-If the developer later agrees to a new event, use the saved payload or ask
-them to paste it again, show it, and get a new yes. Never rebuild it from memory or from a read-back
-`eventBody`.
+If the developer later agrees to a new event, show the saved payload or ask for
+it again, generate a new key and get a new yes.
 
 ### An event the developer sent, not you
 
-When the developer says their own script or tool sent an event and asks what
-happened, you never saw the request or its response. Do not resend it to find
-out, and do not treat it as yours. Ask for the exact payload (or at least the
-quest id, `name`, `idempotency_key` and user), which user it named, and when
-it was sent, and whether they got an `event_id` back. Then verify read-only
-as in [`verification.md`](verification.md). A key the developer's script
-generated or reused is a developer-supplied key: the match is weaker
-identification, so also require the user and a `server_timestamp` close to
-the stated send time, and say so in the report.
+When the developer says their own script or tool sent an event, you never saw
+the request or response. Do not resend it. Ask for the payload or, at minimum,
+the quest id, name, idempotency key, user and send time. Then verify read-only
+as described in [`verification.md`](verification.md).
