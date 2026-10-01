@@ -1,9 +1,6 @@
 # Glossary detection
 
-The glossary is the set of terms that must render **identically everywhere** — and, for
-a few of them, must not be translated at all. It is **detected from the data**, not
-asked for: the catalog already declares most of it, and a question the user cannot
-answer well ("what shouldn't we translate?") produces a worse list than the data does.
+Terms that must render the same everywhere, and a few that must not be translated. Detect them from the catalog. Do not ask "what shouldn't we translate?" The catalog already declares most of it, and that question gets a worse list.
 
 ## Why it is not a question
 

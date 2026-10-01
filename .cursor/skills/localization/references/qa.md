@@ -1,8 +1,6 @@
 # QA before import
 
-Two passes that catch different classes of error, run on **every** translation —
-AI-produced and human-supplied alike. A partner's CSV is not exempt: it arrives with its
-own failure modes (wrong column, stale rows, mangled encoding).
+Two passes, on every translation, including a partner CSV. A partner file brings its own failures: wrong column, stale rows, mangled encoding.
 
 | | Deterministic (`check`) | Semantic (agent) |
 |---|---|---|

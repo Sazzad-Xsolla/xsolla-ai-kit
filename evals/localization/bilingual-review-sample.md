@@ -1,15 +1,8 @@
 # Bilingual reviewer spot-check — 20-string sample
 
-Per the SB-8790 DoD ask for "a bilingual reviewer spot-check on a 20-string sample." **This
-file is the sample sheet for that reviewer, not the review itself** — grading your own
-translation output isn't an independent check, so the "Reviewer" columns below are
-intentionally blank for a human fluent in the target language to fill in. An AI self-check
-pass is included underneath as a preliminary signal only; it does not satisfy this DoD item.
+The SB-8790 sample sheet. Reviewer columns are blank on purpose. Grading your own output is not this check. The AI self-check under the table is a preliminary signal only.
 
-Sampled across all 3 completed target languages (de-DE, ja-JP, es-ES) and stratified across
-`kind` (`product` = catalog name, `product-body` = catalog description, `marketing`, `ui`) so
-the sample isn't all easy short strings. Pulled from the actual `l10n/work/<locale>/
-translated.json` that was sent live, not re-typed by hand.
+Sampled from the `translated.json` that was sent live, across de-DE, ja-JP, and es-ES, and across `kind`: `product` (catalog name), `product-body` (catalog description), `marketing`, `ui`.
 
 | # | Locale | Kind | Source (EN) | Target | Reviewer: accurate? | Reviewer: register/tone OK? | Notes |
 |---|---|---|---|---|---|---|---|

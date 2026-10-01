@@ -31,9 +31,20 @@ fi
 # Target first, then everything else in its existing relative order.
 order="$TARGET$(printf '\n%s' $(echo "$cur" | grep -vx "$TARGET") )"
 
-# Remove all but one: a landing cannot have zero languages, so keep the target present
-# throughout by adding it first, then stripping the rest, then re-adding in order.
-"$XS" shopbuilder add-language --slug "$DOMAIN" --language "$TARGET" "${A[@]}" >/dev/null 2>&1 || true
+# The dropdown is this list. A language that was never added cannot appear in it, and
+# preview cannot open in it. Add it and confirm it stuck BEFORE deleting anything.
+# A landing cannot have zero languages, so a failed add must not be followed by deletes.
+add_err="$("$XS" shopbuilder add-language --slug "$DOMAIN" --language "$TARGET" "${A[@]}" 2>&1 >/dev/null || true)"
+added="$("$XS" shopbuilder get-structure --slug "$DOMAIN" "${A[@]}" 2>/dev/null \
+        | jq -r '.data.languages[]' || true)"
+if ! echo "$added" | grep -qx "$TARGET"; then
+  echo "FAILED — $TARGET was not added, so it will not appear in the dropdown." >&2
+  echo "Nothing else was changed. The site still opens in $(echo "$cur" | head -1)." >&2
+  [ -n "$add_err" ] && echo "$add_err" >&2
+  echo "Enable $TARGET under Publisher Account → Project settings → General settings, then run this again." >&2
+  exit 1
+fi
+
 for l in $cur; do
   [ "$l" = "$TARGET" ] && continue
   "$XS" shopbuilder delete-language --slug "$DOMAIN" --language "$l" "${A[@]}" >/dev/null 2>&1 \

@@ -1,11 +1,8 @@
 # Localization coverage matrix
 
-Every user-facing block a headless shop can render, whether it localizes, and how.
-Use it as a completeness checklist — a "localized shop" is rarely just item names.
+Every user-facing block a headless shop can render, whether it localizes, and how. A localized shop is rarely just item names.
 
-**Layer 2 comes first because it is the one this skill owns.** The others follow out of
-numeric order on purpose: they are here so a coverage audit does not miss them and so
-each can be routed to its owner, not because this skill performs them.
+**Layer 2 is the one this skill owns, so it comes first.** The other layers are here so an audit does not miss them, and so each can be routed to its owner. This skill does not perform them.
 
 ## Layer 2 — Catalog content (Store API)
 

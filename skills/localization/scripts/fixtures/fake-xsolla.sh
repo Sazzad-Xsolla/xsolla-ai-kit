@@ -23,6 +23,28 @@ case "$GROUP $CMD" in
       for a in "$@"; do case "$a" in --merchant-id|--project-id)
         echo "unknown flag: $a" >&2; exit 1 ;; esac; done
       emit "$STORE/localization.json" ;;
-  "shopbuilder get-structure") emit "$STORE/structure.json" ;;
+  "shopbuilder get-structure")
+      if [ -n "${FAKE_LANG_FILE:-}" ] && [ -f "$FAKE_LANG_FILE" ]; then
+        body="$(jq -c --slurpfile langs "$FAKE_LANG_FILE" '.languages = $langs[0]' "$STORE/structure.json")"
+        printf '{"ok":true,"data":%s}' "$body"
+      else
+        emit "$STORE/structure.json"
+      fi ;;
+  "shopbuilder add-language"|"shopbuilder delete-language")
+      # No language file: the caller is not exercising order. Succeed so a store that
+      # already opens in the target does not need a mutable list.
+      [ -n "${FAKE_LANG_FILE:-}" ] || { echo '{"ok":true,"data":{}}'; exit 0; }
+      lang="$(arg --language "$@")"
+      if [ "$CMD" = "add-language" ] && [ "$lang" = "${FAKE_LANG_REJECT:-}" ]; then
+        echo "language $lang is not enabled on the project" >&2
+        exit 1
+      fi
+      if [ "$CMD" = "add-language" ]; then
+        jq -c --arg l "$lang" 'if index($l) then . else . + [$l] end' "$FAKE_LANG_FILE" > "$FAKE_LANG_FILE.tmp"
+      else
+        jq -c --arg l "$lang" 'map(select(. != $l))' "$FAKE_LANG_FILE" > "$FAKE_LANG_FILE.tmp"
+      fi
+      mv "$FAKE_LANG_FILE.tmp" "$FAKE_LANG_FILE"
+      echo '{"ok":true,"data":{}}' ;;
   *) echo "fake-xsolla: unhandled '$GROUP $CMD'" >&2; exit 1 ;;
 esac

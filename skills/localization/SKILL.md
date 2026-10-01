@@ -87,13 +87,10 @@ scripts/snapshot.sh <domain>
 scripts/extract.sh en-US ja-JP
 scripts/apply.sh <domain> ja-JP                 # dry run
 scripts/apply.sh <domain> ja-JP --commit --confirm-overwrites
-scripts/set-opening-language.sh <domain> ja-JP
 scripts/verify.sh <domain> ja-JP
 ```
 
-Enable the locale with `xsolla shopbuilder add-language` before writing.
-`--commit` blocks when it would replace an existing translation until
-`--confirm-overwrites`. `scripts/restore.sh` replays a storefront snapshot.
+Enable the locale with `xsolla shopbuilder add-language` before writing. `--commit` blocks when it would replace an existing translation until `--confirm-overwrites`. `--commit` then moves that locale to the front of the site's language list, which is what preview opens in. The publisher does not reorder it themselves. `scripts/set-opening-language.sh` is the step `--commit` calls. `verify.sh` fails if the shop still opens in another language. Do not tell them it worked until that report says the shop opens in the language they asked for. `scripts/restore.sh` replays a storefront snapshot.
 
 ## Out of scope
 

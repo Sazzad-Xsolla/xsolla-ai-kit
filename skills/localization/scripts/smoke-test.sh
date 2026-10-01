@@ -76,6 +76,7 @@ chk "per-id envelope is {translation:...}"   "jq -e '.perScopeValues.page1[\"L:t
 chk "legal string not written"               "jq -e '.perScopeValues.page1|has(\"L:t6\")|not' $L"
 # --sandbox is NOT a safety property for the catalog: the CLI warns it has no effect there
 # and the request URL is identical with or without it. Asserting it would certify nothing.
+chk "dry run names the language preview will open in" "grep -q 'shop will open in de-DE' l10n/work/de-DE/apply.out"
 chk "no call carries --sandbox at all"       "! grep -rq -- '--sandbox' $PD/"
 chk "catalog write is announced as LIVE"     "grep -qi 'go LIVE' $PD/../apply.out"
 chk "catalog carries --prices"               "jq -e 'index(\"--prices\")!=null' $C"
@@ -129,6 +130,7 @@ chk "blocked run wrote nothing"                    "[ ! -f l10n/work/de-DE/paylo
 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 bash "$HERE/apply.sh" voidwall-45e0 de-DE \
   --commit --confirm-overwrites > overwrite-confirmed.out 2>&1
 chk "--confirm-overwrites lets the same run through" "grep -q 'go LIVE' overwrite-confirmed.out"
+chk "commit puts the target language first" "grep -q 'already first' overwrite-confirmed.out"
 # Identical existing==new is not a real overwrite and must not require the flag.
 jq '.units |= map(select(.sku!="coins_1000" and .sku!="no_desc_item"))
     | (.units[]|select(.id=="catalog:virtual_item:skin_ember:name")|.existing_target)="Glutwächter-Skin"' \
@@ -163,6 +165,30 @@ chk "counts catalog names and descriptions"  "grep -q 'catalog names        5' g
 chk "counts storefront strings"              "grep -q 'storefront strings   6' good.out"
 chk "reports which language it opens in"     "grep -q 'opens in de-DE' good.out"
 chk "legal/asset units not demanded"         "! grep -q 'blk_foot\|blk_seo' good.out"
+
+echo "== preview language is the language they asked for =="
+# German is on the store, but Italian is first. That is the run that "passes" and then
+# opens the preview in Italian. It must fail.
+echo '["it-IT","de-DE","en-US"]' > "$TMP/langs.json"
+set +e
+FAKE_STORE="$HERE/fixtures/store-good" FAKE_LANG_FILE="$TMP/langs.json" \
+  bash "$HERE/verify.sh" voidwall-45e0 de-DE > italian.out 2>&1; irc=$?
+set -e
+chk "opens in another language FAILS"        "[ $irc -ne 0 ]"
+chk "names the language preview opens in"    "grep -q 'OPENS in it-IT' italian.out"
+echo '["it-IT","en-US"]' > "$TMP/langs.json"
+FAKE_STORE="$HERE/fixtures/store-good" FAKE_LANG_FILE="$TMP/langs.json" \
+  bash "$HERE/set-opening-language.sh" voidwall-45e0 de-DE > open.out 2>&1
+chk "target becomes the language preview opens in" "grep -q 'opens in de-DE' open.out"
+chk "earlier languages stay in the selector" "jq -e '. == [\"de-DE\",\"it-IT\",\"en-US\"]' $TMP/langs.json"
+echo '["de-DE","en-US"]' > "$TMP/langs.json"
+set +e
+FAKE_STORE="$HERE/fixtures/store-good" FAKE_LANG_FILE="$TMP/langs.json" FAKE_LANG_REJECT=ne-NP \
+  bash "$HERE/set-opening-language.sh" voidwall-45e0 ne-NP > rejected.out 2>&1; rrc=$?
+set -e
+chk "a language the project refuses is not a success" "[ $rrc -ne 0 ]"
+chk "refused language is named" "grep -q 'ne-NP was not added' rejected.out"
+chk "refused add does not touch the other languages" "jq -e '. == [\"de-DE\",\"en-US\"]' $TMP/langs.json"
 chk "CLI cannot carry long_description flag" "grep -q 'no CLI flag' $PD/../apply.out"
 
 set +e

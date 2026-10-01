@@ -2,7 +2,8 @@
 # apply.sh <domain> <target-locale> [--commit] [--report] [--confirm-overwrites]
 #
 # Default is a DRY RUN: builds and saves every payload, sends nothing.
-#   --commit              actually write
+#   --commit              actually write, then make the shop open in <target-locale>
+#                         so preview opens in that language
 #   --report              reconcile the localization store / catalog against translated.json
 #   --confirm-overwrites  required on --commit whenever a unit already has a target-locale
 #                         value that differs from what is about to be written. Without it,
@@ -386,9 +387,20 @@ if REPORT:
 
 print(f"\npayloads -> {PAYDIR}")
 if not COMMIT:
-    print("DRY RUN — nothing was sent. Review the payloads, then re-run with --commit.")
+    print(f"DRY RUN — nothing was sent. On --commit the shop will open in {TGT}, preview included.")
+    print("Review the payloads, then re-run with --commit.")
 else:
+    # The landing has no default-locale field. Preview opens in languages[0], and
+    # add-language only appends, so a finished translation still opens in whatever
+    # was already first (Italian, English, …) until this runs.
+    print(f"\n== opening language: the shop, and preview, will open in {TGT} ==")
+    opened = subprocess.run(
+        ['bash', os.path.join(os.environ['SCRIPTDIR'], 'set-opening-language.sh'), DOMAIN, TGT])
+    if opened.returncode != 0:
+        print(f"FAILED — copy may be written, but preview will not open in {TGT}.")
+        sys.exit(opened.returncode or 1)
     print(f"NOT DONE YET — a write returning ok:true proves nothing here. Read it back:")
     print(f"    scripts/verify.sh {DOMAIN} {TGT}")
+    print(f"  Do not tell the publisher it worked unless that report says the shop opens in {TGT}.")
 sys.exit(rc)
 PY

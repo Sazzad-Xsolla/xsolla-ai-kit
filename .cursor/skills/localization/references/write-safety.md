@@ -1,8 +1,6 @@
 # Write safety
 
-Everything about turning translated cells into API writes without losing data. The
-catalog `PUT` has **REPLACE** semantics, there is no server-side undo, and the object
-may have changed since it was exported — those three facts drive every rule here.
+How translated cells become API writes without losing data. The catalog `PUT` **replaces** the object, there is no server-side undo, and the object may have changed since export. Every rule below follows from those three facts.
 
 ## Full state, not an allowlist
 

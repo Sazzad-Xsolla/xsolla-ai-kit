@@ -1,13 +1,8 @@
 # Translation CSV round-trip (contract)
 
-A stateless export → translate → import loop for bulk localization. The **model**
-translates (or a publisher does); a **deterministic script** moves the data so the
-model never hand-assembles CSV at scale (bug-prone escaping, dropped rows). No
-sidecar/state: `missing` is derived from the data, safety comes from *fill-only*.
+Export, translate, import. The model or the publisher translates. `catalog_i18n.py` moves the data so the model never hand-builds CSV. No sidecar. `missing` comes from the data. Safety is fill-only.
 
-Reference implementation: [`../scripts/catalog_i18n.py`](../scripts/catalog_i18n.py)
-(catalog adapter). This file is the **contract** it implements — and the spec to
-re-implement in another stack when Python is unavailable.
+Reference implementation: [`../scripts/catalog_i18n.py`](../scripts/catalog_i18n.py). This file is the contract, and the spec for another stack when Python is unavailable.
 
 **Catalog entities (each verified end-to-end via create → localize → verify →
 cleanup on project 314067):** `items`, `groups`, `virtual_currency`, `vc_package`,

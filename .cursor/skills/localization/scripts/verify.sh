@@ -207,9 +207,11 @@ else:
             f'NOT enabled on the site (enabled: {", ".join(enabled) or "none"}) — '
             f'translations are written but nothing renders. Run add-language')
     elif enabled and enabled[0] != TGT:
-        warn('languages', TGT,
-             f'enabled but not first — the shop OPENS in {enabled[0]}. '
-             f'Run set-opening-language.sh {DOMAIN} {TGT} if that is not intended')
+        # Preview opens in languages[0]. A warning here is how a run "passes" while the
+        # publisher still sees another language. That is a failed translation.
+        bad('languages', TGT,
+            f'enabled but not first — the shop OPENS in {enabled[0]}, so preview will not '
+            f'show {TGT}. apply.sh --commit moves {TGT} first; if this remains, that step failed')
 
 # ---------------------------------------------------------------- prices (reported, not fixed)
 # Not translation. But a currency carried by some items and not others makes the ENTIRE

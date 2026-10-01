@@ -1,16 +1,8 @@
 # Eval log — `localization` (SB-8790)
 
-Structured record of every live run of the Shop Builder half of the `localization`
-skill (runs 1–6 predate the merge with the catalog CSV workflow and were made under
-the skill's earlier name, `shopbuilder-translate`). Per the SB-8790 DoD ask for "a
-structured eval log across runs (result / manual interventions / failures)". All runs
-are against merchant 935479 / project 314515. A second project has not been exercised:
-the only API key available is scoped to 314515, and the merchant-level project
-endpoints return 401 for it.
+Every live Shop Builder run of `localization`. Runs 1–6 were recorded under the earlier name `shopbuilder-translate`, before the catalog CSV workflow was merged in. Columns are result, manual interventions, and failures. All runs: merchant 935479, project 314515. No second project. The only API key is scoped to 314515, and merchant-level project endpoints return 401 for it.
 
-**Status: 7 of the DoD's ≥10 runs.** Padding this table with repeat or synthetic runs to
-hit the number would defeat its purpose. New rows should only be added for genuinely new
-live runs.
+**Status: 7 of the DoD's ≥10 runs.** Do not pad with repeats or synthetic runs. Add a row only for a new live run.
 
 ## Coverage / integrity / manual-intervention / quality metrics
 
@@ -26,18 +18,10 @@ live runs.
 
 ## Reading this table
 
-- **"Storefront (written/extractable)"** excludes `kind: legal` units by design — those are
-  never auto-translated (see SKILL.md). It is not a raw coverage percentage against every
-  string on the page.
-- **Runs 2–3 predate `verify.sh`** doing a live read-back; those runs were checked by spot
-  reading the API response at the time, not re-verified independently after the fact.
-- **"Manual interventions"** means a human (or the agent, under human review) had to look at
-  something and make a judgment call beyond running the pipeline — confirming an overwrite,
-  shortening a translation, or fixing a stale value. Zero interventions (run 1) means the
-  pipeline's automatic checks were sufficient.
-- Bugs discovered during a run were fixed in the skill before being counted as closed — see
-  `skills/localization/references/translation-notes.md` and the git history of
-  `skills/localization/scripts/extract.sh` for the fixes themselves.
+- **Storefront (written/extractable)** excludes `kind: legal`. Those strings are never auto-translated. It is not coverage of every string on the page.
+- **Runs 2–3 predate `verify.sh`.** They were spot-checked from the API response at the time, and were not re-read after `verify.sh` existed.
+- **Manual interventions** are judgment beyond running the pipeline: confirming an overwrite, shortening a string, or fixing a stale value. Run 1 had none. The automatic checks were enough.
+- Bugs found in a run were fixed in the skill before they were counted closed. See `skills/localization/references/translation-notes.md` and the history of `skills/localization/scripts/extract.sh`.
 
 ## Cross-run rollup (SB-8790 metrics)
 

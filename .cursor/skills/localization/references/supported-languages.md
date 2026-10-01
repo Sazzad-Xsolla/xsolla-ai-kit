@@ -1,7 +1,6 @@
 # Supported languages (the authority)
 
-The complete, verified reference for locale codes. SKILL.md summarizes; this file
-holds the detail and the bundled code table.
+Locale codes. SKILL.md summarizes. This file is the table.
 
 ## There is no "get supported languages" API
 
