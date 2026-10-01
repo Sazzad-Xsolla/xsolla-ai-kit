@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ingest-user-translations.sh <target-locale> <file.json|file.txt>
 #
-# Publisher already has translations (Andrey: accept JSON or TXT). Merge them into
+# Publisher already has translations. Accept JSON or TXT. Merge them into
 # l10n/work/<target>/translated.json. Does not write to the store.
 #
 # JSON: a full translated.json, {"units":[{"id","target"}]}, or a flat {id: text} map.

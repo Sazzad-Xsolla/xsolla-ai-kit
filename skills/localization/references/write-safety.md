@@ -24,8 +24,8 @@ after reading what the `!!` line lists.
 
 ### Write-form rules (measured, not guessed)
 
-Pass-through is not simply "send everything back". Three rules were measured on project
-314067, each found as a `422 errorCode 1102` — a server-side schema rejection the
+Pass-through is not simply "send everything back". Three rules were measured on
+a live project, each found as a `422 errorCode 1102` — a server-side schema rejection the
 preview cannot predict:
 
 | Rule | Why |
@@ -104,7 +104,7 @@ preserved exactly; the window marker moves.
 
 ## PATCH
 
-**Not used.** Measured live on 314067 (2026-09-07), and the result does not justify the
+**Not used.** Measured live (2026-09-07), and the result does not justify the
 risk:
 
 | Entity | `PATCH` with only the changed field | Notes |
@@ -205,7 +205,7 @@ There is no server-side undo and the API keeps no versions.
   (`--no-snapshot` to override, `--snapshot PATH` to place it).
 - `restore <snapshot.json> --write` PUTs the captured state back, previewing by default.
   Verified live: byte-identical restoration.
-- **Whole-catalog runs that exercised all of the above**, on project 314067, every object
+- **Whole-catalog runs that exercised all of the above**, on a live project, every object
   rolled back or deleted afterwards: 2026-09-02, all 8 catalog entity types created →
   localized → verified `{en,ru,de}` → cleaned up (an invalid `pt-PT` was caught by
   `check` before any write). 2026-09-07, `demodaily_1` — carrying `image_url`, `groups`

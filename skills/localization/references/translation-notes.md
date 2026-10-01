@@ -50,12 +50,12 @@ Bundles embed content SKUs under `content`. A recursive SKU sweep of `list-catal
 
 A client baseline yields `"name": "Vanguard Skin"` where `extract.sh` expects `{"en": "Vanguard Skin"}`. Every catalog string is dropped and the run reports a successful storefront-only pass. `snapshot.sh` asserts the shape.
 
-On project 314515, `ja`, `ja-JP`, `zz`, and `not-a-locale` all returned `ok:true` and the same default-locale text. A client read proves neither that a code is valid nor that a translation exists. Verify the catalog with `get-items`, never `--locale`.
+On a live project, `ja`, `ja-JP`, `zz`, and `not-a-locale` all returned `ok:true` and the same default-locale text. A client read proves neither that a code is valid nor that a translation exists. Verify the catalog with `get-items`, never `--locale`.
 
 - `get-structure` returns `L:` ids, not text.
 - `get-block --slug <domain> --block-id <id>` inlines the localized strings. Use it to confirm a write.
 - `get-localization --slug <domain>` is the whole store: `common."L:<id>"` and `pages.<pageId>.texts."L:<id>"`, each id mapping locale to HTML.
-- Re-run `enable-preview` and hard-refresh. Preview is a snapshot. A stale one looks like a failed write.
+- A cached page looks like a failed write. Verification is the live read-back, not a preview.
 - Scroll the target locale before a screenshot. Checks pass on demo data. Card images lazy-load. Blanks above the capture are an artifact.
 
 ## Content

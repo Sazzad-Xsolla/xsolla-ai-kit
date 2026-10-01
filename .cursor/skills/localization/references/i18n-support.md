@@ -59,7 +59,7 @@ the localization store and `add-language`, which genuinely require it.
 ### What a client read can and cannot tell you (tested)
 
 Against a live project, the storefront read accepts **any** locale string and returns
-`ok: true` with the default-locale text. Tested on project 314515, five items:
+`ok: true` with the default-locale text. Tested on a live project, five items:
 
 ```
 --locale en           Vanguard Skin | Season 1 Pass | Obsidian Skin | ...

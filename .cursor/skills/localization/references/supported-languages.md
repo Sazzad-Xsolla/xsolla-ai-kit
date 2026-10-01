@@ -42,7 +42,7 @@ Each language has **exactly one** valid variant — the 2-letter code and, where
 lists one, its single 5-letter form (`nl` and `ms` are payment-only and have no 5-letter
 form here, so use the 2-letter code). Other regional variants are **invalid**, not
 merged:
-- ✅ verified on 314067: writing `pt-BR` stored as `pt`; writing `pt-PT` → `404 Locale
+- ✅ verified on a live project: writing `pt-BR` stored as `pt`; writing `pt-PT` → `404 Locale
   not found`.
 - So `pt-BR` and `pt-PT` cannot coexist — `pt-PT`/`en-GB`/`es-MX` are simply not Xsolla
   locales. Chinese is the exception, handled by two separate codes (`cn`, `tw`).

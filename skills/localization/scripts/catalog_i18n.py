@@ -222,7 +222,7 @@ def _unquote(v):
 
 
 ENV_HINT = ("set them in the environment, or pass --env PATH to a .env file holding "
-            "bare values:\n  XSOLLA_PROJECT_ID=314067\n  XSOLLA_PROJECT_API_KEY=<key>")
+            "bare values:\n  XSOLLA_PROJECT_ID=<project id>\n  XSOLLA_PROJECT_API_KEY=<key>")
 
 
 def load_env(argv):
@@ -1410,7 +1410,7 @@ DERIVED = {"item_id", "type", "regional_prices", "items_count", "project_id",
 # state — the next reset timestamp and the displayable reset dates. Those are
 # derived, and echoing them back on a PUT is rejected with errorCode 1102, which
 # took out every item with a recurring limit (a daily/weekly gift). Keep only the
-# keys that actually define the schedule. Verified: the 2 failing items on 314067
+# keys that actually define the schedule. Verified: the 2 failing items on a live project
 # were exactly the 2 with a non-null recurrent_schedule; the other 8 had none.
 SCHEDULE_KEEP = {"interval_type", "day_of_month", "day_of_week", "time"}
 

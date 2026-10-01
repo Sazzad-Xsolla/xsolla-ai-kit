@@ -153,7 +153,7 @@ with the partner's frontend.
   `long_description`, all 18 strings translated, written and read back carrying `de`.
   Before that the only evidence was the key coming back as `null`, which
   shows the field exists but not that it accepts a translation.
-- **Groups have no `long_description`.** Verified by GET on 314067 (2026-09-07): the key
+- **Groups have no `long_description`.** Verified by GET on a live project: the key
   is absent from a group entirely, while unfilled fields elsewhere come back as `null` —
   so the field does not exist in the model. Bundles, virtual currency, currency packages
   and value points, by contrast, **do** carry `long_description`.

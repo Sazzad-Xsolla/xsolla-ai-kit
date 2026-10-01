@@ -21,7 +21,7 @@ if [ -n "$XS" ]; then
   sb="$("$XS" shopbuilder --help 2>&1 || true)"
   # Block text lives in the localization store, not the block. Without these two the
   # storefront half of this skill cannot run at all.
-  for c in get-structure get-localization update-many-localization add-language enable-preview get-block; do
+  for c in get-structure get-localization update-many-localization add-language get-block; do
     grep -qE "^\s*$c\b" <<<"$sb" && ok "shopbuilder $c" || bad "shopbuilder $c MISSING"
   done
   cat="$("$XS" catalog --help 2>&1 || true)"
@@ -45,15 +45,8 @@ echo "== credentials =="
 acct=""; [ -n "$XS" ] && acct="$("$XS" auth list-account 2>&1 || true)"
 if [ -n "$acct" ] && ! grep -qi 'no accounts stored' <<<"$acct"; then
   ok "xsolla auth session present (Shop Builder session auto-bootstraps)"
-elif [ -n "${XSOLLA_SHOPBUILDER_SESSION:-}" ]; then
-  ok "XSOLLA_SHOPBUILDER_SESSION set (fallback path)"
-  case "$XSOLLA_SHOPBUILDER_SESSION" in
-    pa-v4-token=*) ok "session value has the pa-v4-token= prefix" ;;
-    *ps2*|*user_session*) bad "that looks like a legacy ps2[user_session] value — it 403s. Use pa-v4-token." ;;
-    *) warn "expected the form 'pa-v4-token=<value>'" ;;
-  esac
 else
-  bad "no auth. Run 'xsolla auth login' (add --audience https://api.xsolla.com if it asks), or export XSOLLA_SHOPBUILDER_SESSION='pa-v4-token=<value>'"
+  bad "no auth. Run 'xsolla auth login' (add --audience https://api.xsolla.com if it asks). Do not pass a session token by hand."
 fi
 # Catalog uses Basic auth with a Store/merchant API key — a different credential.
 [ -n "${XSOLLA_API_KEY:-}" ] && ok "XSOLLA_API_KEY set (catalog Basic auth)" \

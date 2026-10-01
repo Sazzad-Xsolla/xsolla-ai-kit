@@ -66,7 +66,7 @@ get catalog-item-groups.json "$XS" catalog list-item-groups --project-id "$P" --
 # response is fine), and the TEXT comes from a per-SKU ADMIN read.
 #
 # Why not admin-list-items-by-group / admin-list-bundles-by-group? Two reasons, both real:
-#   1. They return HTTP 403 with a project-scoped API key (verified against project 314515,
+#   1. They return HTTP 403 with a project-scoped API key (verified against a live project,
 #      while get-items and admin-list-currency-packages on the same key return 200).
 #   2. A group walk cannot see an item that belongs to no group, and would drop it silently.
 # The per-SKU walk is N+1 calls but has neither problem.

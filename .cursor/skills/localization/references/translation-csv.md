@@ -5,7 +5,7 @@ Export, translate, import. The model or the publisher translates. `catalog_i18n.
 Reference implementation: [`../scripts/catalog_i18n.py`](../scripts/catalog_i18n.py). This file is the contract, and the spec for another stack when Python is unavailable.
 
 **Catalog entities (each verified end-to-end via create → localize → verify →
-cleanup on project 314067):** `items`, `groups`, `virtual_currency`, `vc_package`,
+cleanup on a live project):** `items`, `groups`, `virtual_currency`, `vc_package`,
 `bundle`, `value_points`, `game`, `attribute`.
 
 **LiveOps entities (writes verified 2026-09-08):** promotions on **v3** —
@@ -40,7 +40,7 @@ Per-entity detail: [coverage-matrix.md](coverage-matrix.md).
   step name — is one write. The list view omits `steps`, so the object is re-read
   before export; `/admin/reward_chain`, detail at `/admin/reward_chain/id/{id}`.
 
-Deferred (with reason, verified by probing project 314067):
+Deferred (with reason, verified by probing a live project):
 - **subscription plans** — `/admin/items/subscription` 405; correct endpoint TBD.
 - **`upsell`** — `/v2/admin/upsell` 403; the only LiveOps endpoint a project key cannot
   even read.

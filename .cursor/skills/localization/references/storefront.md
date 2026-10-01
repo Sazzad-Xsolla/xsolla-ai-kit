@@ -17,7 +17,7 @@ Not for creating the store (`shop-builder-assembly`), building the catalog (`cat
 ## Prerequisites
 
 - Store renders and catalog is populated. An empty catalog translates demo data.
-- Two credentials. Shop Builder: `xsolla auth login` (OAuth2 + PKCE). On "audience required", retry `--audience https://api.xsolla.com`. CI fallback: `export XSOLLA_SHOPBUILDER_SESSION='pa-v4-token=<value>'`. The `pa-v4-token=` prefix is part of the value. `ps2[user_session]` 403s. Catalog: Basic auth, `XSOLLA_API_KEY` plus `--merchant-id`. A 403 on one says nothing about the other.
+- Two credentials. Shop Builder: `xsolla auth login` (OAuth2 + PKCE) only. On "audience required", retry `--audience https://api.xsolla.com`. Do not pass a session token by hand. Catalog: Basic auth, `XSOLLA_API_KEY` plus `--merchant-id`. A 403 on one says nothing about the other.
 - `XSOLLA_MERCHANT_ID`, `XSOLLA_PROJECT_ID`.
 - Use the returned domain. `create-website --slug voidwall` yields `voidwall-45e0`. Localization commands take that domain as `--slug`. `--landing-id` is the landing's Mongo `_id` from `get-structure`. A slug there 500s.
 - `scripts/preflight.sh` checks `shopbuilder get-localization`, `update-many-localization`, `get-block`, and the catalog commands this skill calls.
@@ -69,7 +69,7 @@ No domain argument. The domain is in the baseline. Omit the directory and the ne
 
 Writes `l10n/work/<target>/translatable.json`: stable `id`, source, HTML tags, character budget, `kind`.
 
-Andrey's launch rule, before any translation: does the publisher already have a complete set? If yes, ingest it and do not re-translate. JSON may be a full `translated.json`, `{"units":[{"id","target"}]}`, or `{id: text}`. TXT is `id<TAB>target` or `id: target` per line.
+Before any translation: does the publisher already have a complete set? If yes, ingest it and do not re-translate. JSON may be a full `translated.json`, `{"units":[{"id","target"}]}`, or `{id: text}`. TXT is `id<TAB>target` or `id: target` per line.
 
 ```
 scripts/ingest-user-translations.sh ja-JP ./publisher-ja.json
@@ -170,22 +170,12 @@ scripts/verify.sh <domain> <target-locale> --json
 
 Every incorrect write in this system returns success. `apply.sh` checks blanks, tag parity, and length against a file on disk. That passes whether or not a word reached the store. `verify.sh` asks the store. Exit non-zero if something is missing. A value that differs from what was sent is reported, not failed, because a person may have edited the store since.
 
-1. Catalog, admin reads only (`get-items`, `get-bundles`, `admin-list-currency-packages`), never `--locale`. Target key non-empty for `name` and `description`, source locale still present, other locales listed. On project 314515 the storefront read returned `ok:true` and default-locale text for `ja`, `ja-JP`, `zz`, and `not-a-locale`. It proves neither that a code is valid nor that a translation exists.
+1. Catalog, admin reads only (`get-items`, `get-bundles`, `admin-list-currency-packages`), never `--locale`. Target key non-empty for `name` and `description`, source locale still present, other locales listed. A storefront read returned `ok:true` and default-locale text for `ja`, `ja-JP`, `zz`, and `not-a-locale`. It proves neither that a code is valid nor that a translation exists.
 2. Storefront via `get-localization`. Each `L:` id in its own scope. Page strings nest one level deeper than `common`. `get-structure` returns ids, not text. `get-block --slug <domain> --block-id <id>` is the read that inlines localized strings.
 3. Languages via `get-structure`: target enabled, and first, which is what the shop opens in.
 4. Prices: a currency on some entities and missing on others. One gap de-localizes every price in that market.
 
-`apply.sh --commit --report` runs `verify.sh` after the write. File coverage alone is not verification.
-
-Then render:
-
-```
-xsolla shopbuilder enable-preview --slug <domain>
-```
-
-Open `https://preview.xsollasitebuilder.com/<domain>`, switch language, scroll top to bottom before capturing. Card images lazy-load. Blanks above the capture are an artifact. Re-run `enable-preview` and hard-refresh. Preview is a snapshot, so a stale preview looks like a failed write.
-
-`enable-preview` and `preview-link` return 403 `admin_privileges_requred` without admin rights. No CLI flag fixes that. Use Publisher Account. Steps 1–4 are the verification. The screenshot is confirmation. Look for untranslated strings, overflow, and prices.
+`apply.sh --commit --report` runs `verify.sh` after the write. File coverage alone is not verification. Read-back is the check. This skill does not publish the site and does not open a preview.
 
 ## Prices are not text
 
@@ -261,4 +251,3 @@ Re-sends whole entities, so a restore cannot drop prices or unlist items. Storef
 
 - [i18n-support.md](i18n-support.md) — locales, code formats, what is localizable.
 - [translation-notes.md](translation-notes.md) — the same failures, as a field catalog, including CLI response shapes.
-- `evals/localization/EVAL-LOG.md` — live runs and what the definition of done still lacks.

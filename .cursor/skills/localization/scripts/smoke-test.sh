@@ -25,7 +25,7 @@ chk "L: ids resolved to page scope"   "[ \$(jq '[.units[]|select(.scope==\"page1
 chk "asset URLs flagged, not copy"    "jq -e '[.units[]|select(.kind==\"asset\")]|length==2' $T"
 chk "every asset unit is a URL"       "jq -e '[.units[]|select(.kind==\"asset\")]|all(.source|startswith(\"http\"))' $T"
 # Page-level SEO (title/description) lives under page.seo, a sibling of page.blocks — the
-# original block walker never reached it (SB-8790 DoD names SEO fields explicitly).
+# original block walker never reached it. Page SEO is in scope for this skill.
 chk "page SEO title extracted"        "jq -e '.units[]|select(.id==\"seo:page1:title\")|.source==\"Voidwall Store\"' $T"
 chk "page SEO title is marketing"     "jq -e '.units[]|select(.id==\"seo:page1:title\")|.kind==\"marketing\"' $T"
 chk "page SEO description extracted"  "jq -e '.units[]|select(.id==\"seo:page1:description\")|.kind==\"ui\"' $T"

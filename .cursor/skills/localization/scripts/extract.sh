@@ -88,7 +88,7 @@ for fname, etype in CAT:
     if doc is None:
         notes.append(f"{fname}: missing — {etype} not extracted"); continue
     # list-item-groups nests its array under "groups", not "items" — every other endpoint
-    # in CAT uses "items". Confirmed live (project 314515): falling through to `doc` itself
+    # in CAT uses "items". Confirmed live: falling through to `doc` itself
     # when neither key matches a list is what silently produced "unexpected shape, skipped"
     # and zero item_group units on every real run.
     if isinstance(doc, dict):
@@ -207,7 +207,7 @@ else:
         # Page-level SEO: `title`/`description` carry their own L: ids, resolved and
         # written through the exact same localization store as block text — but they live
         # under page.seo, a sibling of page.blocks, so the walk above never reaches them.
-        # Confirmed live (project 314515): both had real per-locale text, not placeholders.
+        # Confirmed live: both had real per-locale text, not placeholders.
         # `manifest.title`/`manifest.description` reuse these SAME ids (PWA manifest), so
         # walking only the top-level seo.* keys covers both without double-extracting.
         seo = page.get('seo') or {}
