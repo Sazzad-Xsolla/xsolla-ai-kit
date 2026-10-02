@@ -1,6 +1,6 @@
 # What Xsolla localizes, and what it does not
 
-Shop Builder page copy uses the five-symbol codes (`ja-JP`). Catalog locale maps and LiveOps writes belong to the `localization` skill.
+Shop Builder page copy uses the five-symbol codes (`ja-JP`). Catalog and LiveOps text are out of scope for this skill.
 
 Source: [supported languages](https://developers.xsolla.com/dev-resources/references/supported-languages/),
 [catalog API › Localization](https://developers.xsolla.com/api/catalog#section/Localization),
@@ -8,7 +8,7 @@ Source: [supported languages](https://developers.xsolla.com/dev-resources/refere
 
 ## Supported locales
 
-26 languages. Item name and description localize into these and only these:
+26 languages. Page copy localizes into these and only these:
 
 | Language | 2-letter | 5-symbol | | Language | 2-letter | 5-symbol |
 |---|---|---|---|---|---|---|
@@ -35,78 +35,9 @@ Latin American Spanish.
 Note the two Chinese codes are irregular: the two-letter forms are `cn` / `tw`, but the
 five-symbol forms are `zh-CN` / `zh-TW`. Do not derive one from the other by truncation.
 
-## Code format
-
-### Locale codes on the catalog — SETTLED BY TEST
-
-Probed against a live project with a throwaway SKU (`scripts/probe-locale.sh`). Both source
-documents were half right, and the split is on the **read** side, not the write side:
-
-| Action | Code used | Result |
-|---|---|---|
-| write `name` map | `ja-JP` | accepted, **stored normalized as `ja`** |
-| write `name` map | `ja` | accepted, stored as `ja` |
-| read `--locale` | `ja` | resolves — returns 「テスト」 |
-| read `--locale` | `ja-JP` | **falls back to English, silently** |
-
-So: writing `{"en":"Probe","ja-JP":"テスト"}` produces the admin map `{"en":"Probe","ja":"テスト"}`.
-The five-symbol form is accepted and folded down on input, which is why SKILL.md's "both
-forms accepted" held — but a five-symbol code passed to `--locale` on a **read** resolves to
-nothing and quietly serves the default, which is the "fails quietly" the draft described.
-
-**Rule: use the two-letter form everywhere on the catalog.** It is what the store actually
-holds, what reads resolve, and what admin responses return. Reserve the five-symbol form for
-the localization store and `add-language`, which genuinely require it.
-
-### What a client read can and cannot tell you (tested)
-
-Against a live project, the storefront read accepts **any** locale string and returns
-`ok: true` with the default-locale text. Tested on a live project, five items:
-
-```
---locale en           Vanguard Skin | Season 1 Pass | Obsidian Skin | ...
---locale ja           Vanguard Skin | Season 1 Pass | Obsidian Skin | ...   (identical)
---locale ja-JP        Vanguard Skin | ...                                   (identical)
---locale zz           Vanguard Skin | ...                                   (identical)
---locale not-a-locale Vanguard Skin | ...                                   (identical)
-```
-
-There is no 400, no warning, no marker. **A client read therefore cannot distinguish a valid
-locale code from a typo, nor a translation from a fallback.** Any verification step built on
-`list-catalog-items --locale <target>` proves nothing. Only the admin read (`get-items`,
-which has no `--locale` and returns the raw locale map) shows which key was actually stored.
-
-This is also why the locale-code question above cannot be settled by reading the storefront.
-
-### Both forms are documented as accepted on input:
-
-```json
-{ "name": { "en-US": "Starter Pack", "de-DE": "Premium-Paket" } }
-{ "name": { "en":    "Starter Pack", "de":    "Premium-Paket" } }
-```
-
-Two constraints that follow:
-
-- **Catalog admin responses return the two-letter form** regardless of what you sent.
-  Round-tripping a five-symbol write through a read gives you two-letter keys back. The
-  reconciliation step must normalize before diffing or every key looks changed.
-- **If both `en` and `en-US` are sent for the same language, the last one wins.** Sending
-  both is not additive, it is a race. Pick one form and hold it across the whole project.
-
-This skill uses the **five-symbol** form throughout, because the localization store and
-`add-language` use it (`en-US`, `de-DE`, `ja-JP`, `pt-BR`), and normalizes catalog reads up
-to it.
+Shop Builder page copy uses the five-symbol codes in the table above (`en-US`, `de-DE`, `ja-JP`). Catalog locale maps are out of scope for this skill.
 
 ## Localizable fields
-
-### Catalog — exactly three fields
-
-`name`, `description`, `long_description`. Nothing else in a catalog entity is a
-locale-keyed map. Applies to virtual items, bundles, virtual currency, virtual currency
-packages, item groups, and game key packages.
-
-**Item groups are the most-forgotten entity.** They render as the store's tab labels, so
-an untranslated group is highly visible while every card under it is correctly translated.
 
 ### Blocks — an `L:` id, and the text lives elsewhere
 
@@ -138,11 +69,13 @@ Writes:
 
 ```
 update-many-localization --slug <domain> \
-  --data '{"locale":"de-DE","perScopeValues":{"<pageId>":{"L:t1":{"translation":"<h1>…</h1>"}}}}'
+  --data '{"locale":"de-DE","perScopeValues":{"<pageId>":{"L:t1":{"description":"blocks.header.values.title","translation":"<h1>…</h1>"}}}}'
 ```
 
-The per-id value **must** be the object `{"translation": …}`. A bare string, or the keys
-`value` / `text` / `translations`, returns **200 and writes an empty string**.
+The per-id value **must** include `translation`. Send `description` too: it is the dotted
+source path already stored on the entry, and omitting it sets that field to an empty string.
+A bare string, or the keys `value` / `text` / `translations`, returns **200 and writes an
+empty string**.
 
 Block text is **HTML** — wrap copy in `<h1>` / `<h2>` / `<p>`; a bare string renders
 unstyled.
@@ -161,9 +94,7 @@ carry their own rule: **never wholesale-replace `values` or `components`**, beca
 | Thing | Status | Consequence |
 |---|---|---|
 | **Images** | No per-locale slot exists | Text baked into art stays in the source language. The documented workaround is custom HTML. Best answer: do not put text in images |
-| **Any catalog field except the three above** | Single-value | SKU, type, prices, image URL are global |
-| **Item group name, via CLI** | No update command | Catalog text. Use the `localization` skill, not this one |
-| **`long_description`, via `update-items`** | No CLI flag | Catalog text. Use the `localization` skill, not this one |
+| **Catalog and LiveOps text** | Out of scope | Do not translate items, groups, bundles, currency, or promotions with this skill |
 | **Federated block content** (offer chain, daily reward, offerwall) | **Unverified** | Content lives under `values.internalBlockValues` and references a liveops entity created outside the storefront. Whether its labels carry `L:` ids that appear in the localization store is not documented and was not confirmed. Treat as an open spike |
 | **Custom React blocks** | Only if authored for it | You own the i18n |
 | **Header nav chrome** (Store / Daily gifts / Rewards / Redeem code) | Xsolla-owned | Xsolla translates it. It is also not in the landing structure and cannot be removed or edited via CLI |

@@ -10,7 +10,7 @@
 # marketing vs legal and to set a length budget), then resolves text from the store.
 #
 # ALLOWLIST, not denylist. Blocks: only fields that carry an "L:" id. Catalog and LiveOps
-# text belong to the localization skill, not this one. A denylist would pass newly-added
+# text are out of scope for this skill. A denylist would pass newly-added
 # fields to the translator by default; the failure mode of an allowlist is a missed string
 # (reconciliation catches it), of a denylist a translated SKU (nothing catches it).
 set -euo pipefail
@@ -18,7 +18,7 @@ set -euo pipefail
 SRC="${1:?usage: extract.sh <source-locale> <target-locale> [baseline-dir]}"
 TGT="${2:?usage: extract.sh <source-locale> <target-locale> [baseline-dir]}"
 BASE="${3:-$(ls -d l10n/backup/*/ 2>/dev/null | sort | tail -1)}"
-[ -n "$BASE" ] && [ -d "$BASE" ] || { echo "no backup found — run shop-builder-assembly backup_shop.py first" >&2; exit 1; }
+[ -n "$BASE" ] && [ -d "$BASE" ] || { echo "no backup found — run scripts/export-backup.sh first" >&2; exit 1; }
 
 OUT="l10n/work/$TGT"; mkdir -p "$OUT"
 echo "extract  baseline=$BASE  $SRC -> $TGT"
@@ -76,7 +76,7 @@ def pick(locmap, *locales):
         if l and locmap.get(l): return locmap[l]
     return None
 
-# Catalog and LiveOps strings are the localization skill. This extractor does not read them.
+# Catalog and LiveOps strings are out of scope. This extractor does not read them.
 
 # ---------------------------------------------------------------- blocks (surface B)
 structure = load('structure.json')
@@ -86,7 +86,7 @@ if structure is None:
     notes.append("structure.json missing — NO block copy extracted")
 elif locstore is None:
     notes.append("localization.json missing — NO block copy extracted. Block text lives in "
-                 "the localization store, not the block; re-run backup_shop.py.")
+                 "the localization store, not the block; re-run export-backup.sh.")
 else:
     common = locstore.get('common', {}) or {}
     pages_loc = locstore.get('pages', {}) or {}
@@ -138,7 +138,7 @@ else:
                 add(id=f"block:{block_id}:{'.'.join(map(str, path))}", surface='block',
                     lid=lid, scope=scope, page_id=page_id, block_id=block_id,
                     block_type=block_type, container=path[0] if path else '',
-                    field=field, source=src,
+                    field=field, source=src, description=srcpath or '',
                     existing_target=pick(loc, TGT, TGT.split('-')[0]),
                     kind=kind_of(src, field, block_type))
                 return
@@ -181,18 +181,20 @@ else:
             seen.add(lid)
             add(id=f"seo:{pid}:{f}", surface='block', lid=lid, scope=scope, page_id=pid,
                 block_id=None, block_type='', container='seo', field=f, source=src,
+                description=srcpath or '',
                 existing_target=pick(loc, TGT, TGT.split('-')[0]), kind=kind_of(src, field=f))
 
     # Shared strings live in common and are referenced by chrome that is not in the page
     # structure. They are still translatable and would otherwise be silently dropped.
     for lid, entry in common.items():
         if lid in seen: continue
-        loc, _ = locmap(entry)
+        loc, srcpath = locmap(entry)
         src = pick(loc, SRC, SRC.split('-')[0])
         if not src: continue
         add(id=f"block:common:{lid}", surface='block', lid=lid, scope='common',
             page_id=None, block_id=None, block_type='', container='common', field='',
-            source=src, existing_target=pick(loc, TGT, TGT.split('-')[0]),
+            source=src, description=srcpath or '',
+            existing_target=pick(loc, TGT, TGT.split('-')[0]),
             kind=kind_of(src))
 
 # ---------------------------------------------------------------- image references

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # preflight.sh — verify the environment before any Shop Builder translation. Fails loudly.
-# Catalog and LiveOps are the localization skill. This check is the storefront only.
-# The approved-test-project allowlist is enforced by backup_shop.py before the first write,
-# not by a production-project denylist here.
+# Catalog and LiveOps text are out of scope. This check is the storefront only.
+# apply.sh checks the approved-test-project allowlist before the first write.
+# There is no production-project denylist.
 set -euo pipefail
 
 RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'; RST=$'\033[0m'
@@ -38,8 +38,8 @@ fi
 [ -n "${XSOLLA_MERCHANT_ID:-}" ] && ok "XSOLLA_MERCHANT_ID set" || bad "XSOLLA_MERCHANT_ID unset"
 
 echo "== approved test project =="
-echo "  writes require environment=test and the approved-test-project allowlist"
-echo "  backup_shop.py checks the allowlist before the first write"
+echo "  writes require the approved-test-project allowlist"
+echo "  apply.sh checks the allowlist, then reads the site, before the first write"
 if [ -n "${XSOLLA_APPROVED_TEST_PROJECTS:-}" ] && [ -f "${XSOLLA_APPROVED_TEST_PROJECTS}" ]; then
   ok "XSOLLA_APPROVED_TEST_PROJECTS=$XSOLLA_APPROVED_TEST_PROJECTS"
 else

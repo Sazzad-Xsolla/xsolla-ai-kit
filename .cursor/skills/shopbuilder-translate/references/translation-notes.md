@@ -1,30 +1,29 @@
 # Field notes: translating a Shop Builder store
 
-Failures specific to a Shop Builder page-copy pass. Catalog and LiveOps writes belong to the `localization` skill. The procedure is [storefront.md](storefront.md). This page is the failure catalog.
+Failures specific to a Shop Builder page-copy pass. Catalog and LiveOps text are out of scope. The procedure is [storefront.md](storefront.md). This page is the failure catalog.
 
 Every wrong write succeeds. `update-block` returns 200 for a correct patch, a misrouted patch, and a patch that deletes copy. `get-structure` is healthy for a store that is still demo data. Verification is the workflow.
 
 ## Order
 
 - Enable the language before any string. Project language list and site toggles are both gates. Writes into a disabled locale succeed and render nothing.
-- Back up every run, not once, with `shop-builder-assembly`'s `backup_shop.py`. A Publisher Account edit since the last backup hides their change and you overwrite it.
+- Export every run, not once, with `export-backup.sh`. A Publisher Account edit since extract hides their change. `--commit` compares the pre-write export to that baseline and blocks if a string it would write has changed.
 
 ## Writes
 
 - Block text is not in the block. `get-structure` stores `L:<uuid>`. The string is in a localization store keyed by the slug. `update-block` on `["values","title"]` deletes that string and every translation of it, and the call still returns 200. It does not leave the block unchanged. Use `update-many-localization` (one locale per call) or `update-localization` (one string).
-- The per-id envelope is `{"translation": …}`, singular. A bare string, or `value` / `text` / `translations`, returns 200 and writes an empty string.
+- The per-id envelope includes `translation`, singular, and `description` (the dotted source path). Omitting `description` sets it to an empty string. A bare string, or `value` / `text` / `translations`, returns 200 and writes an empty string.
 - Write an `L:` id into its own scope: the page `_id`, or `common`. Resolve scopes from `get-localization` first.
 - `--landing-id` is the landing's Mongo `_id`. A slug 500s. `--slug` is the returned domain (`voidwall-45e0`), not the slug you asked for.
 - Never wholesale-replace `values` or `components`. `L:` ids with no localization 500 the renderer. Translation does not need that.
-- Catalog and LiveOps locale maps are the `localization` skill. Do not `update-items` from this skill. A name-only catalog update replaces the entity, drops prices and groups, and still returns `ok:true`.
+- Catalog and LiveOps text are out of scope. Do not update catalog entities from this skill.
 
 ## Response shapes
 
 Each of these produced zero output and no error on a real store.
 
 1. The CLI wraps responses in `{"ok":true,"data":{…}}`. `pages` and `common` are under `.data`. Unwrap before parsing.
-2. `--all` changes the shape. Without it, `.data` is `{items:[…]}`. With it, `.data` is the array. Indexing an array with a string is a jq error. `|| true` turns that into an empty catalog.
-3. Localization entries nest the locale map under `translations`, beside `description` (the dotted source path):
+2. Localization entries nest the locale map under `translations`, beside `description` (the dotted source path):
 
 ```json
 {"description": "blocks.header.values.loginButton",
@@ -33,20 +32,9 @@ Each of these produced zero output and no error on a real store.
 
 Treating that object as the locale map makes every lookup miss. In `walk()` a miss returns early and the storefront is skipped with no note.
 
-Read key is `translations` (plural, a map). Write key is `translation` (singular, one string). Neither accepts the other.
-
-Bundles embed content SKUs under `content`. A recursive SKU sweep of `list-catalog-bundles` then 404s `get-bundles` on those virtual-item SKUs. Take top-level SKUs only.
+Read key is `translations` (plural, a map). Write key is `translation` (singular, one string). Neither accepts the other. The write also sends `description` back; omitting it clears that field.
 
 ## Reads
-
-| Family | Auth | `--locale`? | Returns | Commands |
-|---|---|---|---|---|
-| client | none | yes | one resolved string | `list-catalog-items`, `get-catalog-item`, `get-item-by-sku`, `list-all-items`, `list-item-groups` |
-| admin | Basic | no | the locale map | `get-items`, `admin-list-items-by-group`, `admin-list-bundles-by-group`, `admin-list-currency-packages` |
-
-A client catalog read yields `"name": "Vanguard Skin"` where a locale map is required. That is the `localization` skill's problem, not this one.
-
-On a live project, `ja`, `ja-JP`, `zz`, and `not-a-locale` all returned `ok:true` and the same default-locale text. A client read proves neither that a code is valid nor that a translation exists. Verify the catalog with `get-items`, never `--locale`.
 
 - `get-structure` returns `L:` ids, not text.
 - `get-block --slug <domain> --block-id <id>` inlines the localized strings. Use it to confirm a write.
@@ -68,13 +56,12 @@ On a live project, `ja`, `ja-JP`, `zz`, and `not-a-locale` all returned `ok:true
 
 Never send SKUs, group keys, `type`, `layout`, `L:` or `I:` ids, image URLs, or theme colors to translation. A translated SKU breaks the store. A translated group key empties a section.
 
-Allowlist. Block text is an `L:` id. Catalog text is exactly three fields. A denylist sends every new field to the translator. A missed string is caught by reconciliation. A corrupted store is not.
+Allowlist. Block text is an `L:` id. Catalog text is out of scope. A denylist sends every new field to the translator. A missed string is caught by reconciliation. A corrupted store is not.
 
 ## Scope
 
-- Item groups are the tab labels, a different entity from the items in them.
-- Currency packages are not virtual currency and not bundles. Items-and-bundles leaves the top-up section in English.
-- Prices follow country, not UI language. One missing regional price de-localizes the catalog for that market. Report it. Do not set it.
+- Catalog and LiveOps text are out of scope. Do not translate them here.
+- Prices follow country, not UI language. Do not set prices from this skill.
 - There is no per-locale image slot. Text in art needs new art. Flag it. Do not substitute other art.
 
 ## Concurrency

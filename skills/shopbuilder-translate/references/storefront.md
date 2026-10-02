@@ -41,24 +41,18 @@ Both gates must be open or writes succeed and never render.
 2. Site language toggles, plus a visible selector in Header and/or Footer.
 
 ```
-xsolla shopbuilder add-language --merchant-id <m> --project-id <p> --slug <domain> --language de-DE
+scripts/enable-language.sh <domain> de-DE
 ```
 
-`add-language` appends. It does not change the language the shop opens in.
+`enable-language.sh` runs `add-language`, which appends. It does not change the language the shop opens in. If the locale is already enabled, the command returns 400 and the message "language is taken". That is success. Any other failure stops the run.
 
 ### 3. Backup
 
 ```
-python3 ../shop-builder-assembly/scripts/backup_shop.py \
-  --merchant-id "$XSOLLA_MERCHANT_ID" --project-id "$XSOLLA_PROJECT_ID" \
-  --environment test \
-  --approved-test-projects "$XSOLLA_APPROVED_TEST_PROJECTS" \
-  --slug <domain> --output-dir l10n/backup/<timestamp>
+scripts/export-backup.sh <domain> l10n/backup/<timestamp>
 ```
 
-This is `shop-builder-assembly`'s `backup_shop.py`. Identity mode checks the approved-test-project allowlist before it reads the site. A project that is not on the list is not exported and must not be written. Do not keep a production-project denylist.
-
-The export is read-only: structure, localization, landing, and a manifest. Re-run it every time. A Publisher Account edit since the last backup makes the diff a lie.
+This reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Re-run it every time. A Publisher Account edit since the last export makes the diff a lie. The approved-test-project allowlist is checked before a write, not before this read. Do not keep a production-project denylist.
 
 ### 4. Extract
 
@@ -108,18 +102,18 @@ Dry run is the default and sends nothing. Read it before `--commit`.
 
 If any unit already has a different target-locale value, `--commit` alone blocks and prints each pair. `--commit --confirm-overwrites` proceeds only after a human has read that list.
 
-`--commit` calls `backup_shop.py` again, into `l10n/pre-write/<timestamp>/`, before the first write. If the allowlist check fails, nothing is written.
+`--commit` checks the approved-test-project allowlist, then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`, before the first write. If the allowlist check fails, or the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run.
 
 **Blocks.** Text is not in the block. `get-structure` puts `L:<uuid>` at `values.<field>.id`. The string is in a localization store keyed by the slug. `update-block` on `["values","title"]` deletes that string and every translation of it, and the call still returns 200. It does not leave the block unchanged. Write through the localization store.
 
 ```
 xsolla shopbuilder update-many-localization --slug <domain> \
   --data '{"locale":"de-DE","perScopeValues":{
-             "<pageId>":{"L:<id>":{"translation":"<h1>Haltet die Stellung</h1>"}},
-             "common":{"L:<id2>":{"translation":"<p>…</p>"}}}}'
+             "<pageId>":{"L:<id>":{"description":"blocks.header.values.title","translation":"<h1>Haltet die Stellung</h1>"}},
+             "common":{"L:<id2>":{"description":"document.common.c1","translation":"<p>…</p>"}}}}'
 ```
 
-Scope is the page `_id`, or `"common"`. The per-id value must be `{"translation": "text"}`. A bare string, or the keys `value` / `text` / `translations`, returns 200 and writes an empty string. One call per locale. Never wholesale-replace a block's `values` or `components`. Copying `L:` ids with no localization 500s the renderer.
+Scope is the page `_id`, or `"common"`. The per-id value must include `translation`. Send `description` as well: omitting it sets that field to an empty string. A bare string, or the keys `value` / `text` / `translations`, returns 200 and writes an empty string. One call per locale. Never wholesale-replace a block's `values` or `components`. Copying `L:` ids with no localization 500s the renderer.
 
 ### 7. Opening language
 
@@ -165,13 +159,14 @@ Do not edit the landing in Publisher Account while this skill runs. Concurrent w
 | Script | Does |
 |---|---|
 | `preflight.sh` | CLI, Shop Builder subcommands, auth, merchant and project |
-| `backup_shop.py` | `shop-builder-assembly`. Allowlist, then a read-only export. Not copied into this skill |
+| `export-backup.sh <domain> <dir>` | Read-only `get-structure` and `get-localization` |
+| `enable-language.sh <domain> <locale>` | `add-language`. "language is taken" means already enabled |
 | `extract.sh <src> <tgt> [backup]` | `translatable.json`. No domain argument |
-| `apply.sh <domain> <tgt> [--commit] [--report] [--confirm-overwrites]` | Page copy only. Dry run default. `--commit` backs up, then writes. It does not change the opening language |
+| `apply.sh <domain> <tgt> [--commit] [--report] [--confirm-overwrites]` | Page copy only. Dry run default. `--commit` checks the allowlist, exports, then writes. It does not change the opening language |
 | `verify.sh <domain> <tgt> [--json]` | Live read-back |
-| `ingest-user-translations.sh <locale> <file>` | Publisher JSON or TXT into `translated.json`. No store write |
+| `ingest-user-translations.sh <locale> <file>` | Publisher JSON or TXT into `translated.json`. Keeps targets already filled. No store write |
 
-Order: `preflight`, `backup_shop.py`, `extract`, translate, `apply --commit`, `verify.sh`.
+Order: `preflight`, `export-backup.sh`, `extract`, `enable-language.sh`, translate, `apply --commit`, `verify.sh`.
 
 ## Also read
 

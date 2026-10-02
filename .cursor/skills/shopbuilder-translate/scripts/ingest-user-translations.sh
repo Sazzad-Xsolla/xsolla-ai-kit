@@ -51,26 +51,38 @@ else:
             raise SystemExit(f"TXT line must be id<TAB>target or 'id: target': {line!r}")
         by_id[i.strip()] = t.strip()
 
+# Start from an existing translated.json so a later file does not erase targets
+# the model already filled. Seed from translatable.json only on the first ingest.
+prior = {}
+if os.path.isfile(out):
+    prev = json.load(open(out))
+    for u in prev.get("units") or []:
+        if isinstance(u, dict) and u.get("id") and (u.get("target") or "").strip():
+            prior[u["id"]] = u["target"]
 doc = copy.deepcopy(base)
-filled = missing = extra = 0
+filled = missing = extra = kept = 0
 known = {u["id"] for u in doc["units"]}
 for u in doc["units"]:
     t = by_id.get(u["id"])
     if t:
         u["target"] = t
         filled += 1
+    elif u["id"] in prior:
+        u["target"] = prior[u["id"]]
+        kept += 1
     elif u.get("kind") not in ("legal", "asset"):
         missing += 1
 extra = len(set(by_id) - known)
 doc["meta"]["ingest"] = {
     "file": srcfile,
     "filled": filled,
+    "kept": kept,
     "still_empty": missing,
     "unknown_ids": extra,
 }
 os.makedirs(os.path.dirname(out), exist_ok=True)
 json.dump(doc, open(out, "w"), indent=2, ensure_ascii=False)
-print(f"ingest  filled={filled}  still_empty={missing}  unknown_ids={extra}")
+print(f"ingest  filled={filled}  kept={kept}  still_empty={missing}  unknown_ids={extra}")
 print(f"wrote {out}")
 if missing:
     print("still_empty units need an LLM pass or a more complete file — do not --commit yet")

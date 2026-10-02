@@ -24,6 +24,7 @@ chk "page SEO title is marketing"     "jq -e '.units[]|select(.id==\"seo:page1:t
 chk "page SEO description extracted"  "jq -e '.units[]|select(.id==\"seo:page1:description\")|.kind==\"ui\"' $T"
 chk "page SEO og:image is an asset"   "jq -e '.units[]|select(.id==\"seo:page1:ogImage\")|.kind==\"asset\"' $T"
 chk "SEO units carry the page's L: ids" "jq -e '[.units[]|select(.id|startswith(\"seo:page1:\"))|.lid]|sort==[\"L:seoDesc\",\"L:seoImg\",\"L:seoTitle\"]' $T"
+chk "description kept on the unit"     "jq -e '.units[]|select(.lid==\"L:t1\")|.description==\"blocks.page1.t1\"' $T"
 chk "common-scope string not dropped" "jq -e '[.units[]|select(.scope==\"common\")]|length==1' $T"
 chk "1 legal unit flagged"            "[ \$(jq '[.units[]|select(.kind==\"legal\")]|length' $T) -eq 1 ]"
 chk "landing_id captured from _id"    "jq -e '.meta.landing_id==\"landing_mongo_id\"' $T"
@@ -38,6 +39,7 @@ chk "ingest filled the named unit" "jq -e '.units[]|select(.id==\"block:blk_hero
 printf '%s\n' 'block:common:L:c1	<p>Aus TXT</p>' > pub.txt
 bash "$HERE/ingest-user-translations.sh" de-DE pub.txt >/dev/null
 chk "ingest accepts TXT id-tab-target" "jq -e '.units[]|select(.id==\"block:common:L:c1\")|.target==\"<p>Aus TXT</p>\"' l10n/work/de-DE/translated.json"
+chk "second ingest keeps the earlier target" "jq -e '.units[]|select(.id==\"block:blk_hero:values.title\")|.target==\"<h1>Aus Datei</h1>\"' l10n/work/de-DE/translated.json"
 
 echo "== apply: tag parity blocks a bad translation =="
 jq '(.units[]|select(.id=="block:blk_hero:values.title")|.target)="Haltet die Stellung"' \
@@ -58,17 +60,26 @@ chk "block text NOT via update-block"        "! grep -rq update-block $PD/"
 chk "locale is the target"                   "jq -e '.locale==\"de-DE\"' $L"
 chk "perScopeValues keyed by page and common" "jq -e '.perScopeValues|has(\"page1\") and has(\"common\")' $L"
 chk "per-id envelope is {translation:...}"   "jq -e '.perScopeValues.page1[\"L:t1\"]|has(\"translation\")' $L"
+chk "per-id envelope keeps description"      "jq -e '.perScopeValues.page1[\"L:t1\"]|has(\"description\")' $L"
 chk "legal string not written"               "jq -e '.perScopeValues.page1|has(\"L:t6\")|not' $L"
 chk "dry run does not change the opening language" "grep -q 'does not change the language' l10n/work/de-DE/apply.out"
 chk "no call carries --sandbox at all"       "! grep -rq -- '--sandbox' $PD/"
 chk "asset URL never written"                "! grep -rq 'og-image' $PD/"
 chk "no catalog payload"                     "! ls $PD/catalog.* >/dev/null 2>&1"
 
-echo "== apply: existing translations are not overwritten without confirmation =="
+echo "== apply: a missing allowlist blocks the write =="
+cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
-export FAKE_STORE="$HERE/fixtures/store-good"
-export L10N_BACKUP_SHOP="$HERE/fixtures/fake-backup.py"
+export FAKE_STORE="$HERE/fixtures/baseline"
+set +e
+env -u XSOLLA_APPROVED_TEST_PROJECTS XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > noallow.out 2>&1; nrc=$?
+set -e
+chk "commit without the allowlist is BLOCKED" "[ $nrc -ne 0 ]"
+chk "missing allowlist does not claim success" "! grep -q 'Copy was written' noallow.out"
 export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
+
+echo "== apply: existing translations are not overwritten without confirmation =="
 jq '(.units[]|select(.id=="block:blk_hero:values.title")|.existing_target)="<h1>Alter Titel</h1>"' \
   "$HERE/fixtures/translated.de-DE.json" > l10n/work/de-DE/translated.json
 set +e
@@ -88,7 +99,45 @@ jq '(.units[]|select(.id=="block:blk_hero:values.title")|.existing_target)="<h1>
 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit \
   > noop-overwrite.out 2>&1
 chk "identical existing value needs no confirmation" "grep -q 'Copy was written' noop-overwrite.out"
-unset XSOLLA_CLI FAKE_STORE
+
+echo "== apply: a failed write is not a success =="
+export FAKE_FAIL_CMD="shopbuilder update-many-localization"
+set +e
+XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit \
+  > writefail.out 2>&1; wrc=$?
+set -e
+unset FAKE_FAIL_CMD
+chk "failed update-many exits non-zero" "[ $wrc -ne 0 ]"
+chk "failed update-many does not claim success" "! grep -q 'Copy was written' writefail.out"
+
+echo "== apply: a live edit after extract blocks the write =="
+mkdir -p "$TMP/live"
+cp "$HERE/fixtures/baseline/structure.json" "$TMP/live/"
+jq '.data.pages.page1.texts["L:t1"].translations["en-US"]="<h1>Changed after extract</h1>"' \
+  "$HERE/fixtures/baseline/localization.json" > "$TMP/live/localization.json"
+set +e
+FAKE_STORE="$TMP/live" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > drift.out 2>&1; drc=$?
+set -e
+chk "live edit after extract is BLOCKED" "[ $drc -ne 0 ]"
+chk "live edit names the string" "grep -q 'block:blk_hero:values.title' drift.out"
+chk "live edit does not claim success" "! grep -q 'Copy was written' drift.out"
+unset XSOLLA_CLI FAKE_STORE XSOLLA_APPROVED_TEST_PROJECTS
+
+echo "== enable-language: already enabled is success =="
+echo '["en-US"]' > "$TMP/langs-enable.json"
+export XSOLLA_CLI="$HERE/fixtures/fake-xsolla.sh"
+export FAKE_STORE="$HERE/fixtures/baseline"
+FAKE_LANG_FILE="$TMP/langs-enable.json" bash "$HERE/enable-language.sh" voidwall-45e0 de-DE > enable.out 2>&1
+chk "add-language enables a new locale" "grep -q 'enabled de-DE' enable.out"
+FAKE_LANG_FILE="$TMP/langs-enable.json" bash "$HERE/enable-language.sh" voidwall-45e0 de-DE > taken.out 2>&1
+chk "language is taken is success" "grep -q 'already enabled' taken.out"
+set +e
+FAKE_LANG_REJECT=fr-FR FAKE_LANG_FILE="$TMP/langs-enable.json" \
+  bash "$HERE/enable-language.sh" voidwall-45e0 fr-FR > reject.out 2>&1; lrc=$?
+set -e
+chk "any other add-language failure still fails" "[ $lrc -ne 0 ]"
+unset XSOLLA_CLI FAKE_STORE FAKE_LANG_REJECT
 cp "$HERE/fixtures/translated.de-DE.json" l10n/work/de-DE/translated.json
 
 echo "== verify: reads the STORE back, not the file =="

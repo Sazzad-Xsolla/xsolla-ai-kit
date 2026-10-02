@@ -13,10 +13,12 @@ arg() { # arg <flag> — value of a --flag from the remaining args
 }
 emit() { [ -f "$1" ] || { echo "not found: $(basename "$1")" >&2; exit 1; }; printf '{"ok":true,"data":%s}' "$(cat "$1")"; }
 
+if [ -n "${FAKE_FAIL_CMD:-}" ] && [ "${FAKE_FAIL_CMD}" = "$GROUP $CMD" ]; then
+  echo "forced failure" >&2
+  exit 1
+fi
+
 case "$GROUP $CMD" in
-  "catalog get-items")   emit "$STORE/item.$(arg --item-sku "$@").json" ;;
-  "catalog get-bundles") emit "$STORE/item.$(arg --bundle-sku "$@").json" ;;
-  "catalog admin-list-currency-packages") emit "$STORE/packages.json" ;;
   "shopbuilder get-localization")
       # The real command takes --slug ONLY; --merchant-id is a hard 'unknown flag' that
       # prints plain text. Reproduce that, so the caller is tested against it.
@@ -30,6 +32,8 @@ case "$GROUP $CMD" in
       else
         emit "$STORE/structure.json"
       fi ;;
+  "shopbuilder update-many-localization")
+      echo '{"ok":true,"data":{}}' ;;
   "shopbuilder add-language"|"shopbuilder delete-language")
       # No language file: the caller is not exercising order. Succeed so a store that
       # already opens in the target does not need a mutable list.
@@ -40,7 +44,11 @@ case "$GROUP $CMD" in
         exit 1
       fi
       if [ "$CMD" = "add-language" ]; then
-        jq -c --arg l "$lang" 'if index($l) then . else . + [$l] end' "$FAKE_LANG_FILE" > "$FAKE_LANG_FILE.tmp"
+        if jq -e --arg l "$lang" 'index($l) != null' "$FAKE_LANG_FILE" >/dev/null; then
+          echo "language is taken" >&2
+          exit 1
+        fi
+        jq -c --arg l "$lang" '. + [$l]' "$FAKE_LANG_FILE" > "$FAKE_LANG_FILE.tmp"
       else
         jq -c --arg l "$lang" 'map(select(. != $l))' "$FAKE_LANG_FILE" > "$FAKE_LANG_FILE.tmp"
       fi

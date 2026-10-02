@@ -27,7 +27,7 @@ Skills call **Xsolla REST APIs directly**. The CLI (`xsolla/xsolla-cli`) is an o
 | `webhooks-impl`                 | Generates webhook handler code for order/payment events                                  |
 | `production`                    | Sandbox → live: contract, flip flags, deploy, developer live-payment checklist           |
 | `description-to-shop`           | Prose → shop brief for shop-builder-assembly — reached via shop-setup, not directly      |
-| `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps stay in the localization skill    |
+| `shopbuilder-translate`         | Translates Shop Builder page copy. Catalog and LiveOps text are out of scope             |
 
 ---
 
@@ -61,8 +61,8 @@ Build me a shop from this description — I have no design or spec
   description-to-shop then delegates the build to shop-builder-assembly
 
 Translate the Shop Builder FAQ / add German to the storefront page
-→ triggers: shopbuilder-translate (page copy only; catalog and LiveOps go to the
-  localization skill; previews first, writes only after an explicit yes)
+→ triggers: shopbuilder-translate (page copy only; catalog and LiveOps text are out of
+  scope; previews first, writes only after an explicit yes)
 ```
 
 ---

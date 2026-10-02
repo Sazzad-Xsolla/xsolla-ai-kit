@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # apply.sh <domain> <target-locale> [--commit] [--report] [--confirm-overwrites]
 #
-# Shop Builder page copy only. Catalog and LiveOps belong to the localization skill.
+# Shop Builder page copy only. Catalog and LiveOps text are out of scope.
 # Default is a DRY RUN: builds and saves every payload, sends nothing.
 #   --commit              write page copy. Does not change the language the shop opens in.
-#                         Before the first write, runs shop-builder-assembly backup_shop.py
-#                         in identity mode (merchant, project, environment=test), which
-#                         checks the approved-test-project allowlist first.
+#                         Before the first write, checks the approved-test-project allowlist,
+#                         exports the live site read-only, and blocks if that text changed
+#                         since extract. A failed write exits non-zero.
 #   --report              reconcile the localization store against translated.json
 #   --confirm-overwrites  required on --commit whenever a unit already has a target-locale
 #                         value that differs from what is about to be written. Without it,
@@ -76,15 +76,22 @@ def save(name, obj):
     with open(os.path.join(PAYDIR, name), 'w') as f:
         json.dump(obj, f, indent=2, ensure_ascii=False)
 
+write_failed = []
+
 def run(args, tag, sandbox=False):
     """No --sandbox: neither surface has a sandbox environment, so the flag is a no-op that
-    would misrepresent what this run is doing. Dry run prints and saves without executing."""
+    would misrepresent what this run is doing. Dry run prints and saves without executing.
+    A non-zero CLI status is a failed write. The caller must not report success."""
     save(f"{tag}.cmd.json", args)
     print("   ", " ".join(a if len(a) < 60 else a[:57] + "..." for a in args))
-    if not COMMIT: return
+    if not COMMIT:
+        return 0
     r = subprocess.run(args, capture_output=True, text=True)
     save(f"{tag}.response.json", {"rc": r.returncode, "stdout": r.stdout, "stderr": r.stderr})
     print(f"    -> rc={r.returncode}" + ("" if r.returncode == 0 else f" {r.stderr[:160]}"))
+    if r.returncode != 0:
+        write_failed.append(tag)
+    return r.returncode
 
 TAG   = re.compile(r'<\s*([a-zA-Z][a-zA-Z0-9]*)')
 plain = lambda s: re.sub(r'<[^>]+>', '', s or '').strip()
@@ -146,10 +153,31 @@ if overwrites:
               "effect of running this script.")
         sys.exit(1)
 
-def backup_before_write():
-    """Allowlist, then a read-only backup, before the first write. Not a production denylist."""
-    if not COMMIT:
-        return
+def unwrap(path):
+    with open(path) as f:
+        d = json.load(f)
+    # The CLI envelope is {"ok","data"}. A fixture that is already an envelope and is
+    # served again by the fake CLI is wrapped twice. Peel until the store itself.
+    while isinstance(d, dict) and 'data' in d and set(d) <= {'ok', 'data', 'error'}:
+        d = d['data']
+    return d
+
+def loc_text(store, scope, lid, locale):
+    if not isinstance(store, dict):
+        return None
+    if scope == 'common':
+        entry = (store.get('common') or {}).get(lid)
+    else:
+        entry = (((store.get('pages') or {}).get(scope) or {}).get('texts') or {}).get(lid)
+    if not isinstance(entry, dict):
+        return None
+    loc = entry['translations'] if isinstance(entry.get('translations'), dict) else entry
+    if not isinstance(loc, dict):
+        return None
+    return loc.get(locale)
+
+def allowlist_allows():
+    """Version-1 approved-test-project list. Not a production denylist."""
     allow = os.environ.get('XSOLLA_APPROVED_TEST_PROJECTS', '').strip()
     if not allow or not os.path.isfile(allow):
         print("BLOCKED — set XSOLLA_APPROVED_TEST_PROJECTS to the approved-test-project "
@@ -159,26 +187,67 @@ def backup_before_write():
     if not M or not P:
         print("BLOCKED — XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID are required before a write.")
         sys.exit(1)
-    script = os.environ.get('L10N_BACKUP_SHOP') or os.path.normpath(os.path.join(
-        os.environ['SCRIPTDIR'], '..', '..', 'shop-builder-assembly', 'scripts', 'backup_shop.py'))
+    try:
+        doc = json.load(open(allow))
+        merchant, project = int(M), int(P)
+    except (OSError, ValueError, json.JSONDecodeError):
+        print(f"BLOCKED — {allow} is not a version-1 allowlist. Nothing was written.")
+        sys.exit(1)
+    if doc.get('version') != 1 or not isinstance(doc.get('projects'), list):
+        print(f"BLOCKED — {allow} is not a version-1 allowlist. Nothing was written.")
+        sys.exit(1)
+    for row in doc['projects']:
+        if not isinstance(row, dict):
+            continue
+        try:
+            if int(row.get('merchant_id')) == merchant and int(row.get('project_id')) == project:
+                return
+        except (TypeError, ValueError):
+            continue
+    print(f"BLOCKED — merchant {M} project {P} is not on the approved-test-project allowlist. "
+          "Nothing was written.")
+    sys.exit(1)
+
+def live_drift(base_path, live_path):
+    """Ids about to be written whose source or existing target changed since extract."""
+    if not base_path or not os.path.isfile(base_path) or not os.path.isfile(live_path):
+        return ["baseline or pre-write localization.json is missing"]
+    base, live = unwrap(base_path), unwrap(live_path)
+    changed = []
+    for u in ready:
+        if u.get('surface') != 'block':
+            continue
+        for locale, label in ((SRC, 'source'), (TGT, 'target')):
+            old, new = loc_text(base, u['scope'], u['lid'], locale), loc_text(live, u['scope'], u['lid'], locale)
+            if old != new:
+                changed.append(f"{u['id']} {label} {locale}: baseline {old!r} live {new!r}")
+    return changed
+
+def backup_before_write():
+    """Allowlist, then a read-only export, before the first write. Not a production denylist."""
+    if not COMMIT:
+        return
+    allowlist_allows()
+    script = os.path.join(os.environ['SCRIPTDIR'], 'export-backup.sh')
     if not os.path.isfile(script):
-        print(f"BLOCKED — shop-builder-assembly backup_shop.py not found at {script}. "
-              "Nothing was written.")
+        print(f"BLOCKED — export-backup.sh not found at {script}. Nothing was written.")
         sys.exit(1)
     out = os.path.abspath(os.path.join('l10n', 'pre-write', time.strftime('%Y%m%d-%H%M%S')))
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    cmd = [sys.executable, script,
-           '--merchant-id', str(M), '--project-id', str(P),
-           '--environment', 'test',
-           '--approved-test-projects', allow,
-           '--slug', DOMAIN, '--output-dir', out]
-    print("\n== backup before write (approved-test-project allowlist) ==")
-    print("   ", " ".join(cmd))
-    r = subprocess.run(cmd)
+    print("\n== read-only export before write (approved-test-project allowlist) ==")
+    r = subprocess.run(['bash', script, DOMAIN, out])
     if r.returncode != 0:
-        print("BLOCKED — backup_shop.py failed the allowlist or the export. Nothing was written.")
+        print("BLOCKED — the read-only export failed. Nothing was written.")
         sys.exit(r.returncode or 1)
-    print(f"  backup -> {out}")
+    base_loc = os.path.join(os.path.normpath(BASE), 'localization.json') if BASE else ''
+    changed = live_drift(base_loc, os.path.join(out, 'localization.json'))
+    if changed:
+        print("BLOCKED — the live store changed after extract for a string this run would write.")
+        print("  Re-run export-backup.sh and extract.sh, then re-translate. Nothing was written.")
+        for line in changed:
+            print(f"  {line}")
+        sys.exit(1)
+    print(f"  export -> {out}")
 
 backup_before_write()
 
@@ -190,9 +259,13 @@ backup_before_write()
 blk = [u for u in ready if u['surface'] == 'block']
 per_scope = collections.defaultdict(dict)
 for u in blk:
-    # The per-id value MUST be {"translation": ...}. A bare string, or any other key
-    # (value/text/translations), returns 200 and writes an EMPTY string.
-    per_scope[u['scope']][u['lid']] = {"translation": u['target']}
+    # The per-id value MUST include "translation". Omitting "description" clears the
+    # dotted source path on that entry. A bare string, or value/text/translations,
+    # returns 200 and writes an EMPTY string.
+    per_scope[u['scope']][u['lid']] = {
+        "description": u.get('description') or "",
+        "translation": u['target'],
+    }
 
 print(f"\n== blocks: {len(blk)} strings across {len(per_scope)} scope(s) -> {TGT} ==")
 if per_scope:
@@ -202,6 +275,11 @@ if per_scope:
         print(f"    scope {scope}: {len(ids)} string(s)")
     run([XS, 'shopbuilder', 'update-many-localization', '--slug', DOMAIN,
          '--data', json.dumps(payload, ensure_ascii=False)], 'localization')
+
+if write_failed:
+    print("\nBLOCKED — a write failed (" + ", ".join(write_failed) + ").")
+    print("The copy was not written. Do not treat this run as a success.")
+    sys.exit(1)
 
 # --- reconciliation ---------------------------------------------------------
 rc = 0
