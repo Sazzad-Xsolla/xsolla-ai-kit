@@ -5,8 +5,9 @@
 # Default is a DRY RUN: builds and saves every payload, sends nothing.
 #   --commit              write page copy. Does not change the language the shop opens in.
 #                         Before the first write, checks the approved-test-project allowlist,
-#                         exports the live site read-only, and blocks if that text changed
-#                         since extract. A failed write exits non-zero.
+#                         lists that project's websites, and blocks unless the slug is in
+#                         that list. Then it exports the live site read-only and blocks if
+#                         that text changed since extract. A failed write exits non-zero.
 #   --report              reconcile the localization store against translated.json
 #   --confirm-overwrites  required on --commit whenever a unit already has a target-locale
 #                         value that differs from what is about to be written. Without it,
@@ -232,6 +233,48 @@ def allowlist_allows():
         block("the CLI's configured merchant/project does not match the target.")
     return matched
 
+def domain_on_project():
+    """The allowlisted project's own website list. get-structure is not proof that
+    a domain belongs to these ids. Do not pass --all."""
+    r = subprocess.run(
+        [XS, 'shopbuilder', 'list-websites',
+         '--merchant-id', M, '--project-id', P, '--json'],
+        capture_output=True, text=True)
+    if r.returncode != 0:
+        detail = (r.stderr or r.stdout or 'list-websites failed').strip()
+        block(f"could not list websites for the allowlisted project: {detail}")
+    try:
+        payload = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        block("list-websites returned no website list.")
+    if isinstance(payload, dict) and payload.get('ok') is False:
+        block(f"list-websites failed: {payload.get('error', payload)}.")
+    while isinstance(payload, dict) and payload.get('ok') is True and 'data' in payload:
+        payload = payload['data']
+    if isinstance(payload, dict):
+        for key in ('websites', 'items', 'landings'):
+            if isinstance(payload.get(key), list):
+                payload = payload[key]
+                break
+    if not isinstance(payload, list):
+        block("list-websites returned no website list.")
+    slugs = []
+    for site in payload:
+        if isinstance(site, str) and site.strip():
+            slugs.append(site.strip())
+            continue
+        if not isinstance(site, dict):
+            continue
+        for key in ('domain', 'slug'):
+            value = site.get(key)
+            if isinstance(value, str) and value.strip():
+                slugs.append(value.strip())
+                break
+    if DOMAIN not in slugs:
+        shown = ', '.join(slugs) or 'none'
+        block(f"domain {DOMAIN!r} is not a website of the allowlisted project "
+              f"(list-websites returned: {shown}).")
+
 def live_drift(base_path, live_path):
     """Ids about to be written whose source or existing target changed since extract."""
     if not base_path or not os.path.isfile(base_path) or not os.path.isfile(live_path):
@@ -252,6 +295,7 @@ def backup_before_write():
     if not COMMIT:
         return
     allowlist_allows()
+    domain_on_project()
     script = os.path.join(os.environ['SCRIPTDIR'], 'export-backup.sh')
     if not os.path.isfile(script):
         print(f"BLOCKED — export-backup.sh not found at {script}. Nothing was written.")
@@ -263,9 +307,8 @@ def backup_before_write():
     if r.returncode != 0:
         print("BLOCKED — the read-only export failed. Nothing was written.")
         sys.exit(r.returncode or 1)
-    # get-structure is called with the allowlisted merchant and project. A domain
-    # from another project fails that read. The returned domain must still be the
-    # slug this run is about to write.
+    # list-websites already proved this slug is on the allowlisted project.
+    # The export must still be that same site.
     try:
         structure = unwrap(os.path.join(out, 'structure.json'))
     except (OSError, json.JSONDecodeError):

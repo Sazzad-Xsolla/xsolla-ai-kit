@@ -102,7 +102,7 @@ Dry run is the default and sends nothing. Read it before `--commit`.
 
 If any unit already has a different target-locale value, `--commit` alone blocks and prints each pair. `--commit --confirm-overwrites` proceeds only after a human has read that list.
 
-`--commit` checks the approved-test-project allowlist, then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`, before the first write. If the allowlist check fails, or the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run.
+`--commit` checks the approved-test-project allowlist, then lists that project's websites with `list-websites` (merchant and project ids, no `--all`). If the slug is not in that list, nothing is written. It then runs `export-backup.sh` again into `l10n/pre-write/<timestamp>/`. If the live text for a string about to be written changed since extract, nothing is written. A write that returns non-zero fails the run. `get-structure` is not the check that the domain belongs to the project.
 
 **Blocks.** Text is not in the block. `get-structure` puts `L:<uuid>` at `values.<field>.id`. The string is in a localization store keyed by the slug. `update-block` on `["values","title"]` deletes that string and every translation of it, and the call still returns 200. It does not leave the block unchanged. Write through the localization store.
 

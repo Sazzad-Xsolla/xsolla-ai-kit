@@ -23,6 +23,24 @@ case "$GROUP $CMD" in
       m="${FAKE_CONFIG_MERCHANT:-1}"
       p="${FAKE_CONFIG_PROJECT:-2}"
       printf '{"ok":true,"data":{"merchant_id":%s,"project_id":%s}}' "$m" "$p" ;;
+  "shopbuilder list-websites")
+      # Real command takes --merchant-id and --project-id. Do not pass --all:
+      # that would list sites outside the allowlisted project.
+      for a in "$@"; do
+        case "$a" in --all) echo "list-websites must not be called with --all" >&2; exit 1 ;; esac
+      done
+      mid="$(arg --merchant-id "$@")"
+      pid="$(arg --project-id "$@")"
+      if [ -z "$mid" ] || [ -z "$pid" ]; then
+        echo "merchant-id and project-id are required" >&2
+        exit 1
+      fi
+      if [ -n "${FAKE_SITES:-}" ]; then
+        printf '%s\n' "$FAKE_SITES"
+      else
+        domain="$(jq -r 'if .data.domain then .data.domain elif .domain then .domain else empty end' "$STORE/structure.json")"
+        printf '{"ok":true,"data":[{"domain":"%s"}]}' "$domain"
+      fi ;;
   "shopbuilder get-localization")
       # The real command takes --slug ONLY; --merchant-id is a hard 'unknown flag' that
       # prints plain text. Reproduce that, so the caller is tested against it.

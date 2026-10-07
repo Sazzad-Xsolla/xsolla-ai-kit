@@ -99,6 +99,14 @@ XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
 set -e
 chk "a domain on another site is BLOCKED" "[ $domrc -ne 0 ]"
 chk "domain check names both slugs" "grep -q other-shop domain.out && grep -q voidwall-45e0 domain.out"
+chk "domain check uses list-websites" "grep -q list-websites domain.out"
+set +e
+FAKE_SITES='{"ok":true,"data":[{"domain":"other-site"}]}' \
+  XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > sites.out 2>&1; siterc=$?
+set -e
+chk "a slug missing from list-websites is BLOCKED" "[ $siterc -ne 0 ]"
+chk "missing slug does not claim success" "! grep -q 'Copy was written' sites.out"
 set +e
 FAKE_OWNED_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
   bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > owned.out 2>&1; ownrc=$?

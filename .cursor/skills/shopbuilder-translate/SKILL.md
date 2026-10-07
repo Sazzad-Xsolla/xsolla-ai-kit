@@ -41,7 +41,7 @@ scripts/apply.sh <domain> ja-JP --commit --confirm-overwrites
 scripts/verify.sh <domain> ja-JP
 ```
 
-`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the project must be on the approved-test-project allowlist (`XSOLLA_APPROVED_TEST_PROJECTS`). A project that is not on the list is not written.
+`export-backup.sh` reads the live site with `get-structure` and `get-localization` and writes those two files. It does not change the site. Before any write, the project must be on the approved-test-project allowlist (`XSOLLA_APPROVED_TEST_PROJECTS`). A project that is not on the list is not written. The slug must also appear in that project's `list-websites` result. `get-structure` is not that check.
 
 `enable-language.sh` runs `add-language`. If the locale is already enabled, the command returns 400 and the message "language is taken"; that is success. Any other failure stops the run.
 
