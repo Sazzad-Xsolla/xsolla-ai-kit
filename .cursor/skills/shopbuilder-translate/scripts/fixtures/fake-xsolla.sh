@@ -19,6 +19,10 @@ if [ -n "${FAKE_FAIL_CMD:-}" ] && [ "${FAKE_FAIL_CMD}" = "$GROUP $CMD" ]; then
 fi
 
 case "$GROUP $CMD" in
+  "config list")
+      m="${FAKE_CONFIG_MERCHANT:-1}"
+      p="${FAKE_CONFIG_PROJECT:-2}"
+      printf '{"ok":true,"data":{"merchant_id":%s,"project_id":%s}}' "$m" "$p" ;;
   "shopbuilder get-localization")
       # The real command takes --slug ONLY; --merchant-id is a hard 'unknown flag' that
       # prints plain text. Reproduce that, so the caller is tested against it.
@@ -26,6 +30,13 @@ case "$GROUP $CMD" in
         echo "unknown flag: $a" >&2; exit 1 ;; esac; done
       emit "$STORE/localization.json" ;;
   "shopbuilder get-structure")
+      # Real CLI accepts --merchant-id and --project-id. A domain on another project
+      # fails the read. FAKE_OWNED_PROJECT sets the only project this fixture serves.
+      owned="$(arg --project-id "$@")"
+      if [ -n "${FAKE_OWNED_PROJECT:-}" ] && [ "$owned" != "$FAKE_OWNED_PROJECT" ]; then
+        echo "domain is not on this project" >&2
+        exit 1
+      fi
       if [ -n "${FAKE_LANG_FILE:-}" ] && [ -f "$FAKE_LANG_FILE" ]; then
         body="$(jq -c --slurpfile langs "$FAKE_LANG_FILE" '.languages = $langs[0]' "$STORE/structure.json")"
         printf '{"ok":true,"data":%s}' "$body"

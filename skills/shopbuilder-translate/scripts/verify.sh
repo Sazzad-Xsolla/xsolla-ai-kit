@@ -77,8 +77,9 @@ def warn(*a): findings.append(('WARN',) + a)
 checked = collections.Counter()
 
 # ---------------------------------------------------------------- storefront (surface B)
-# get-localization takes --slug ONLY. Passing --merchant-id is a hard 'unknown flag' that
-# exits with plain text, which is why cli() treats that as a finding rather than parsing it.
+# get-localization takes --slug ONLY. Confirmed with `xsolla shopbuilder get-localization --help`:
+# --merchant-id and --project-id are not flags of that command. get-structure --help does
+# list both, so the language read below passes them and the localization read does not.
 blk_units = [u for u in units if u['surface'] == 'block']
 if blk_units:
     d, err = cli(['shopbuilder', 'get-localization', '--slug', DOMAIN, '--json'])
@@ -120,7 +121,9 @@ langs, err = cli(['shopbuilder', 'get-structure', '--slug', DOMAIN,
                   '--merchant-id', M, '--project-id', P, '--json'])
 enabled = []
 if err:
-    warn('languages', 'get-structure', err)
+    bad('languages', 'get-structure', err or 'language list could not be read')
+elif not isinstance(langs, dict) or not isinstance(langs.get('languages'), list):
+    bad('languages', 'get-structure', 'language list missing from get-structure')
 else:
     enabled = langs.get('languages') or []
     if TGT not in enabled:
@@ -160,8 +163,8 @@ else:
     print(f"  {counts['MISSING']} missing, {counts['DIFFERS']} differing, "
           f"{counts['WARN']} warnings")
 
-# Missing text, or a target locale that is not enabled, is a failed run. DIFFERS is not:
-# it also fires when a human edited the store after the write, which is information, not
-# a fault this script can adjudicate.
-sys.exit(1 if counts['MISSING'] else 0)
+# Fail closed. A missing string, text that differs from what was sent, a language that
+# is not enabled, or a language list that could not be read exits 1. Opening in another
+# language stays INFO: this skill does not reorder that list.
+sys.exit(1 if counts['MISSING'] or counts['DIFFERS'] else 0)
 PY

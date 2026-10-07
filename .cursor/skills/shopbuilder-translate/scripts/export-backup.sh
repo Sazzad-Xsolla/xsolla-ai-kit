@@ -11,7 +11,14 @@ OUT="${2:?usage: export-backup.sh <domain> <output-dir>}"
 XS="${XSOLLA_CLI:-xsolla}"
 
 mkdir -p "$OUT"
-"$XS" shopbuilder get-structure --slug "$DOMAIN" > "$OUT/structure.json"
+# Confirmed with `xsolla shopbuilder get-structure --help`: --merchant-id and
+# --project-id are flags of this command. Passing them scopes the read to the
+# allowlisted project, so a domain from another project does not export.
+# get-localization --help has neither flag. That command stays --slug only.
+"$XS" shopbuilder get-structure --slug "$DOMAIN" \
+  --merchant-id "${XSOLLA_MERCHANT_ID:?XSOLLA_MERCHANT_ID is required}" \
+  --project-id "${XSOLLA_PROJECT_ID:?XSOLLA_PROJECT_ID is required}" \
+  > "$OUT/structure.json"
 "$XS" shopbuilder get-localization --slug "$DOMAIN" > "$OUT/localization.json"
 
 python3 - "$OUT" <<'PY'

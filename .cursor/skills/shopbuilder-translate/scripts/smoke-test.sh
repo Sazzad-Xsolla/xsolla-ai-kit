@@ -79,6 +79,33 @@ chk "commit without the allowlist is BLOCKED" "[ $nrc -ne 0 ]"
 chk "missing allowlist does not claim success" "! grep -q 'Copy was written' noallow.out"
 export XSOLLA_APPROVED_TEST_PROJECTS="$HERE/fixtures/approved-test-projects.json"
 
+echo "== apply: the domain and the CLI project must match the allowlist =="
+set +e
+FAKE_CONFIG_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > cfg.out 2>&1; crc=$?
+set -e
+chk "CLI pointed at another project is BLOCKED" "[ $crc -ne 0 ]"
+chk "CLI mismatch names the configured project" "grep -q 'configured merchant/project' cfg.out"
+jq 'del(.projects[0].approved_by)' "$HERE/fixtures/approved-test-projects.json" > "$TMP/no-approval.json"
+set +e
+XSOLLA_APPROVED_TEST_PROJECTS="$TMP/no-approval.json" XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > approval.out 2>&1; arc=$?
+set -e
+chk "allowlist entry without approved_by is BLOCKED" "[ $arc -ne 0 ]"
+chk "missing approval field is named" "grep -q 'approved_by' approval.out"
+set +e
+XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" other-shop de-DE --commit > domain.out 2>&1; domrc=$?
+set -e
+chk "a domain on another site is BLOCKED" "[ $domrc -ne 0 ]"
+chk "domain check names both slugs" "grep -q other-shop domain.out && grep -q voidwall-45e0 domain.out"
+set +e
+FAKE_OWNED_PROJECT=99 XSOLLA_MERCHANT_ID=1 XSOLLA_PROJECT_ID=2 \
+  bash "$HERE/apply.sh" voidwall-45e0 de-DE --commit > owned.out 2>&1; ownrc=$?
+set -e
+chk "get-structure rejects a project that does not own the domain" "[ $ownrc -ne 0 ]"
+chk "that rejection does not claim success" "! grep -q 'Copy was written' owned.out"
+
 echo "== apply: existing translations are not overwritten without confirmation =="
 jq '(.units[]|select(.id=="block:blk_hero:values.title")|.existing_target)="<h1>Alter Titel</h1>"' \
   "$HERE/fixtures/translated.de-DE.json" > l10n/work/de-DE/translated.json
@@ -167,5 +194,23 @@ set -e
 chk "a store that did not take FAILS"        "[ $brc -ne 0 ]"
 chk "catches a blanked block string"         "grep -q 'blk_hero:values.subtitle: no de-DE value' bad.out"
 chk "catches a language that is not enabled" "grep -q 'de-DE: NOT enabled' bad.out"
+
+echo "== verify: differing text and an unreadable language list fail =="
+mkdir -p "$TMP/diffstore"
+cp "$HERE/fixtures/store-good/structure.json" "$TMP/diffstore/"
+jq '.common["L:c1"].translations["de-DE"]="<p>Anders</p>"' \
+  "$HERE/fixtures/store-good/localization.json" > "$TMP/diffstore/localization.json"
+set +e
+FAKE_STORE="$TMP/diffstore" bash "$HERE/verify.sh" voidwall-45e0 de-DE > differs.out 2>&1; dfrc=$?
+set -e
+chk "stored text that differs exits non-zero" "[ $dfrc -ne 0 ]"
+chk "stored text that differs is listed" "grep -q DIFFERS differs.out"
+set +e
+FAKE_FAIL_CMD="shopbuilder get-structure" FAKE_STORE="$HERE/fixtures/store-good" \
+  bash "$HERE/verify.sh" voidwall-45e0 de-DE > nolang.out 2>&1; nlrc=$?
+set -e
+unset FAKE_FAIL_CMD
+chk "an unreadable language list exits non-zero" "[ $nlrc -ne 0 ]"
+chk "an unreadable language list is reported" "grep -q 'get-structure' nolang.out"
 
 echo; echo "$pass passed, $failn failed"; [ "$failn" -eq 0 ]

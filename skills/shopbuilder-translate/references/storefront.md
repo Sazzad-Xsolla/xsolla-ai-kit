@@ -1,6 +1,6 @@
 # Shop Builder page copy
 
-Paths are relative to the skill directory. Catalog and LiveOps text belong to the `localization` skill, not this page.
+Paths are relative to the skill directory. Catalog and LiveOps text are out of scope for this page.
 
 The model translates. These steps exist so a write can be undone and a silent success is not trusted.
 
@@ -11,7 +11,7 @@ The model translates. These steps exist so a write can be undone and a silent su
 | A — Site chrome | Cart, buttons, nav, checkout UI | Xsolla, all 26 languages | Enable the language. Do not translate. Overrides are editor-only: double-click in Publisher Account. Never while this skill is writing. |
 | B — Block copy | Hero, CTAs, section titles, FAQ, footer, page SEO | This skill | `xsolla shopbuilder update-many-localization` |
 
-Not for creating the store (`shop-builder-assembly`), translating the catalog (`localization`), or prices.
+Not for creating the store (`shop-builder-assembly`) or for prices. Catalog and LiveOps text are out of scope.
 
 ## Prerequisites
 

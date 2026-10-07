@@ -176,37 +176,61 @@ def loc_text(store, scope, lid, locale):
         return None
     return loc.get(locale)
 
+def block(msg):
+    print(f"BLOCKED — {msg} Nothing was written.")
+    sys.exit(1)
+
 def allowlist_allows():
-    """Version-1 approved-test-project list. Not a production denylist."""
+    """Same gate as game-web-portal preflight: version-1 list, integer ids,
+    approved_by and approval_reference, and the CLI's configured project must match.
+    Not a production denylist."""
     allow = os.environ.get('XSOLLA_APPROVED_TEST_PROJECTS', '').strip()
     if not allow or not os.path.isfile(allow):
-        print("BLOCKED — set XSOLLA_APPROVED_TEST_PROJECTS to the approved-test-project "
-              "allowlist JSON before any write. A production denylist is not a substitute. "
-              "Nothing was written.")
-        sys.exit(1)
+        block("set XSOLLA_APPROVED_TEST_PROJECTS to the approved-test-project "
+              "allowlist JSON before any write. A production denylist is not a substitute.")
     if not M or not P:
-        print("BLOCKED — XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID are required before a write.")
-        sys.exit(1)
+        block("XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID are required before a write.")
+    try:
+        merchant, project = int(M), int(P)
+    except ValueError:
+        block("XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID must be integers.")
+    if merchant <= 0 or project <= 0:
+        block("XSOLLA_MERCHANT_ID and XSOLLA_PROJECT_ID must be positive integers.")
     try:
         doc = json.load(open(allow))
-        merchant, project = int(M), int(P)
-    except (OSError, ValueError, json.JSONDecodeError):
-        print(f"BLOCKED — {allow} is not a version-1 allowlist. Nothing was written.")
-        sys.exit(1)
-    if doc.get('version') != 1 or not isinstance(doc.get('projects'), list):
-        print(f"BLOCKED — {allow} is not a version-1 allowlist. Nothing was written.")
-        sys.exit(1)
-    for row in doc['projects']:
+    except (OSError, json.JSONDecodeError):
+        block(f"{allow} is not a version-1 allowlist.")
+    if not isinstance(doc, dict) or doc.get('version') != 1 or not isinstance(doc.get('projects'), list):
+        block(f"{allow} is not a version-1 allowlist.")
+    matched = None
+    for index, row in enumerate(doc['projects']):
         if not isinstance(row, dict):
-            continue
-        try:
-            if int(row.get('merchant_id')) == merchant and int(row.get('project_id')) == project:
-                return
-        except (TypeError, ValueError):
-            continue
-    print(f"BLOCKED — merchant {M} project {P} is not on the approved-test-project allowlist. "
-          "Nothing was written.")
-    sys.exit(1)
+            block(f"approved test projects[{index}] must be an object.")
+        ids = (row.get('merchant_id'), row.get('project_id'))
+        if any(isinstance(i, bool) or not isinstance(i, int) for i in ids):
+            block(f"approved test projects[{index}] must contain integer IDs.")
+        for field in ('approved_by', 'approval_reference'):
+            if not isinstance(row.get(field), str) or not row[field].strip():
+                block(f"approved test projects[{index}].{field} is required.")
+        if ids == (merchant, project):
+            matched = row
+            break
+    if matched is None:
+        block(f"merchant {merchant} project {project} is not on the approved-test-project allowlist.")
+    r = subprocess.run([XS, 'config', 'list', '--json'], capture_output=True, text=True)
+    try:
+        config = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        block("no Xsolla CLI project context: run `xsolla config init` for the test project.")
+    if isinstance(config, dict) and config.get('ok') is False:
+        block(f"xsolla config list failed: {config.get('error', config)}.")
+    if isinstance(config, dict) and config.get('ok') is True and 'data' in config:
+        config = config['data']
+    if not isinstance(config, dict):
+        block("xsolla config list returned an unexpected shape.")
+    if config.get('merchant_id') != merchant or config.get('project_id') != project:
+        block("the CLI's configured merchant/project does not match the target.")
+    return matched
 
 def live_drift(base_path, live_path):
     """Ids about to be written whose source or existing target changed since extract."""
@@ -239,6 +263,17 @@ def backup_before_write():
     if r.returncode != 0:
         print("BLOCKED — the read-only export failed. Nothing was written.")
         sys.exit(r.returncode or 1)
+    # get-structure is called with the allowlisted merchant and project. A domain
+    # from another project fails that read. The returned domain must still be the
+    # slug this run is about to write.
+    try:
+        structure = unwrap(os.path.join(out, 'structure.json'))
+    except (OSError, json.JSONDecodeError):
+        block("the pre-write structure.json could not be read.")
+    got = structure.get('domain') if isinstance(structure, dict) else None
+    if got != DOMAIN:
+        block(f"domain {DOMAIN!r} does not belong to the allowlisted project "
+              f"(get-structure returned domain {got!r}).")
     base_loc = os.path.join(os.path.normpath(BASE), 'localization.json') if BASE else ''
     changed = live_drift(base_loc, os.path.join(out, 'localization.json'))
     if changed:

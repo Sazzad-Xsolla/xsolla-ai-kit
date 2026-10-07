@@ -47,7 +47,7 @@ else
 fi
 
 echo "== tooling =="
-for t in jq python3; do command -v "$t" >/dev/null 2>&1 && ok "$t" || bad "$t not installed"; done
+command -v python3 >/dev/null 2>&1 && ok "python3" || bad "python3 not installed"
 
 echo
 if [ "$fail" = 0 ]; then echo "${GRN}preflight passed${RST}"
